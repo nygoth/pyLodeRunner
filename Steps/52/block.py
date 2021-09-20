@@ -115,7 +115,6 @@ class TemporaryBlock(AnimatedBlock):
         self.images_end = None
         self.on_start = True
         self.died = False
-        self.underlay = None
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
         if isinstance(img_end, (tuple, list)):
@@ -168,11 +167,9 @@ class TemporaryBlock(AnimatedBlock):
         copied = TemporaryBlock(None, None, self.pos, animation_delay=self.delay, animation_pause=self.pause)
         self.__copy_body__(copied, xflip, yflip, scale)
         if self.images_end is not None:
-            copied.images_end = list()
             for pict in self.images_end:
                 copied.images_end.append(pict.copy(xflip, yflip, scale))
         copied.on_start = self.on_start
         copied.died = self.died
-        copied.underlay = self.underlay
 
         return copied

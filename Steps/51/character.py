@@ -1,7 +1,7 @@
 # Модуль, реализующий персонажей на основе спрайтов игры.
 # Персонаж, это перемещающийся по уровню спрайт. Двигает его либо ИИ, либо пользователь вводом с клавиатуры
 
-# V 2.1
+# V 1.0
 import random
 
 import pygame
@@ -25,16 +25,6 @@ STATES = {"idle": STATE_STAND * K_IDLE,
           "walk_hang_left": STATE_HANG * K_LEFT,
           }
 
-CRACKED_BLOCK_IMAGES = ("cracked_block0.png",
-                        "cracked_block1.png",
-                        "cracked_block2.png",
-                        "cracked_block3.png",
-                        "cracked_block4.png",
-                        "cracked_block5.png",
-                        "cracked_block6.png",
-                        "cracked_block7.png",
-                        )
-
 MOTION = {K_LEFT: (0, -1),
           K_RIGHT: (0, 1),
           K_UP: (-1, 0),
@@ -51,7 +41,6 @@ ANTIMOTION = {K_LEFT: K_RIGHT,
 I_MOTION = dict(zip(MOTION.values(), MOTION.keys()))
 
 SOLID_BLOCKS = ('Z', 'O')  # Непроницаемые блоки
-DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
 SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P')  # Блоки, на которых можно стоять не падая
 CARRY_BLOCKS = ('H', '-', 'P')  # Блоки, можно стоять на их фоне и не падать
 HANG_BLOCKS = ('-',)  # Блоки, на которых можно висеть
@@ -100,30 +89,15 @@ class Character(block.Block):
             self.__clone_animation__(STATES["hang"], STATES["walk_hang_right"])
             self.__clone_animation__(STATES["fall"], STATES["fall_hang"])
 
-            attack_list = ("attack_left", "attack_right")
-            for state in attack_list:
-                if state in img:
-                    self.images[state] = block.TemporaryBlock(img[state], subfolder=subfolder, animation_delay=6)
-
-            if attack_list[0] not in self.images and \
-                    attack_list[1] not in self.images:
-                self.images[attack_list[0]] = block.TemporaryBlock(None, animation_delay=6)
-
-            if attack_list[1] not in self.images:
-                self.images[attack_list[1]] = self.images[attack_list[0]].copy(xflip=True)
-
     def __clone_animation__(self, state1, state2, flip=False):
-        f = state1
-        z = state2
-        for i in range(2):
-            if f not in self.images and z in self.images:
-                if isinstance(self.images[z], list):
-                    self.images[f] = list()
-                    for pict in self.images[z]:
-                        self.images[f].append(pict.copy(xflip=flip))
-                break
-            f = state2
-            z = state1
+        if state1 not in self.images and state2 in self.images:
+            self.images[state1] = list()
+            for pict in self.images[state2]:
+                self.images[state1].append(pict.copy(xflip=flip))
+        if state1 in self.images and state2 not in self.images:
+            self.images[state2] = list()
+            for pict in self.images[state1]:
+                self.images[state2].append(pict.copy(xflip=flip))
 
     def __set_state__(self):
         self.move_state = STATE_HANG if glCurrentLevel[0][self.pos[0]][self.pos[1]] in HANG_BLOCKS else STATE_STAND
@@ -141,17 +115,17 @@ class Character(block.Block):
         self.oldpos = self.pos.copy()
         self.__set_state__()
 
-        if check_bounds((self.pos[0] + 1, self.pos[1])):
-            if glCurrentLevel[0][self.pos[0] + 1][self.pos[1]] not in SUPPORT_BLOCKS and \
-                    glCurrentLevel[0][self.pos[0]][self.pos[1]] not in CARRY_BLOCKS:
-                # We are falling down, no other movement
+        if glCurrentLevel[0][self.pos[0] + 1][self.pos[1]] not in SUPPORT_BLOCKS and \
+                glCurrentLevel[0][self.pos[0]][self.pos[1]] not in CARRY_BLOCKS:
+            # We are falling down, no other movement
+            if check_bounds((self.pos[0] + 1, self.pos[1])):
                 self.move_state = STATE_FALL
                 self.move_direction = K_IDLE
                 self.pos[0] += 1
-                return True
+            return True
         return False
 
-    def move(self, disp: tuple, obstacles: list = None):
+    def move(self, disp: tuple, obstacles=None):
         self.oldpos = self.pos.copy()
 
         self.__set_state__()
@@ -199,24 +173,21 @@ class Beast(Character):
     def __init__(self, img, position=None, subfolder=""):
         super(Beast, self).__init__(img, position, subfolder)
         # Запоминаем позицию рождения для возрождения чудовища в исходном месте при его смерти
-        self.spawn_pos = self.pos.copy()
+        self.spawn_pos = self.pos
         self.idioticy = 0
-        self.range = random.randrange(0, 4)
+        self.range = random.randrange(0,4)
 
     # Мы получаем координаты других чудищ (на их место встать нельзя) и игрока (к которому мы стремимся)
-    def move(self, player_pos: list, beasts: list = None):
+    def move(self, player_pos: list, beasts=None):
         self.__set_state__()
 
         if super().fall():
-            return True
+            return
 
         # Если игрок выше и левее -- смещения отрицательные
         # Если ниже или правее -- положительные
         disp_y = player_pos[0] - self.pos[0]
         disp_x = player_pos[1] - self.pos[1]
-
-        if disp_x == 0 and disp_y == 0:
-            return False
 
         res = False
         disp_x = sign(disp_x)
@@ -232,7 +203,7 @@ class Beast(Character):
             # Смогли пойти вертикально по направлению к игроку
             if res:
                 self.move_direction = k_vert
-                return True
+                return
 
             if disp_x != 0:
                 k_horiz = I_MOTION[(0, disp_x)]
@@ -240,7 +211,7 @@ class Beast(Character):
             # Смогли пойти горизонтально
             if res:
                 self.move_direction = k_horiz
-                return True
+                return
 
         self.idioticy = self.idioticy + 1 if self.idioticy < self.range else 0
         if self.move_direction != K_IDLE:
@@ -248,7 +219,6 @@ class Beast(Character):
                 self.move_direction = ANTIMOTION[self.move_direction]
                 if not super().move(MOTION[self.move_direction]):
                     self.move_direction = K_IDLE
-        return True
 
 
 class Player(Character):
@@ -258,10 +228,8 @@ class Player(Character):
 
     def __init__(self, img, position=None, subfolder=""):
         super(Player, self).__init__(img, position, subfolder)
-        self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES, list(reversed(CRACKED_BLOCK_IMAGES)),
-                                                  subfolder="Animation", animation_delay=4, animation_pause=400)
 
-    def move(self, obstacles: list = None, temporary_items: list = None):
+    def move(self, obstacles=None):
         pressed_keys = pygame.key.get_pressed()
 
         self.move_direction = K_IDLE
@@ -270,42 +238,20 @@ class Player(Character):
 
         if super().fall():
             self.move_direction = K_IDLE
-            return True
+            return
 
-        for obstacle in obstacles:
-            if self.pos[0] == obstacle.pos[0] and self.pos[1] == obstacle.pos[1]:
-                return False
-
-        attack = {K_LEFT: ("attack_left", -1),
-                  K_RIGHT: ("attack_right", +1)}
         for key in (K_UP, K_DOWN, K_LEFT, K_RIGHT):
-            if pressed_keys[key]:
-                if pressed_keys[K_SPACE] and key in attack:
-                    if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
-                            glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
-                        fire = self.images[attack[key][0]].copy()
-                        crack = self.cracked_block.copy()
-                        fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
-                        crack.pos = [self.pos[0] + 1, self.pos[1] + attack[key][1]]
-                        crack.underlay = glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]]
-
-                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] = '.'
-
-                        temporary_items.append(fire)
-                        temporary_items.append(crack)
-                else:
-                    if super().move(MOTION[key], obstacles):
-                        self.move_direction = key
+            if pressed_keys[key] and super().move(MOTION[key], obstacles):
+                self.move_direction = key
                 break
-        return True
 
 
 def check_bounds(pos: tuple):
     """Return true, if provided position within screen bounds, else false"""
-    if 0 <= pos[1] < LEVEL_WIDTH and \
-            0 <= pos[0] < LEVEL_HEIGHT:
-        return True
-    return False
+    if pos[1] < 0 or pos[1] >= LEVEL_WIDTH or \
+            pos[0] < 0 or pos[0] >= LEVEL_HEIGHT:
+        return False
+    return True
 
 
 def sign(x):

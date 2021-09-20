@@ -1,15 +1,17 @@
 # LodeRunner clone game
 # This project is for studying python programming
 
-# V 5.3
+# V 5.2
 # Game itself
 
-# Реализован временный спрайт, анимация и удаление временных спрайтов
-# С его помощью создан эффект атаки для игрока
+# Базовый ИИ сделан. Следующий шаг -- доводка и переход к реализации разрушения разрушаемых блоков, анимации и
+# возможности провалиться в сделанный проём.
 
-# Теперь реализуем разрушение уровня игроком и восстановление его
-# Для этого временные спрайты должны иметь возможность сохранять элемент, который они закрывают
-# Пока это будет реализовано только для статичных блоков.
+# Для создания разрушаемых блоков сделаем новый анимированный спрайт -- временный.
+# Т.е. он появляется на уровне на определённое время, проигрывает анимацию и либо пропадает после последнего кадра,
+# либо на определённую задержку остаётся, а потом пропадает, возможно, с анимацией.
+
+# Этот спрайт вообще никак не влияет на персонажей игры.
 
 import random
 
@@ -101,13 +103,6 @@ BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
                              "character_zombie_climb7.png",)
                 }
 
-GAME_OVER_COMPLETE = 0
-GAME_OVER_EATEN = 1
-GAME_OVER_STUCK = 2
-GAME_OVER_STRINGS = ("Congratulations!\nLevel complete!",
-                     "Fail!\nEaten by zombie.",
-                     "Fail!\nStuck in structure.")
-
 glBeasts = list()
 glAnimatedEntities = dict()
 glTemporaryItems = list()
@@ -144,17 +139,17 @@ def load_level(filename):
         row = 0
 
         for line in lvl_stream:
-            static_line = list()
-            exit_line = list()
+            static_line = ""
+            exit_line = ""
 
             col = 0
 
             for ch in line[0:LEVEL_WIDTH + 1]:
                 if ch == 'P':
-                    exit_line.append(ch)
+                    exit_line += ch
                     ch = '.'
                 else:
-                    exit_line.append('.')
+                    exit_line += '.'
 
                 if ch in ANIMATED_BLOCKS:
                     glAnimatedEntities[str(row) + ":" + str(col) + ":" + ch] = \
@@ -174,7 +169,7 @@ def load_level(filename):
                     glPlayer.pos = [row, col]
                     glPlayer.oldpos = [row, col]
 
-                static_line.append(('.', ch)[ch in character.MAPPED_BLOCKS])
+                static_line += ('.', ch)[ch in character.MAPPED_BLOCKS]
                 col += 1
 
             static_layer.append(static_line)
@@ -213,26 +208,15 @@ def collect_treasure():
             row = 0
             for line in glCurrentLevel[1]:
                 col = 0
+                modified = ""
                 for ch in line:
-                    glCurrentLevel[0][row][col] = ch if ch != '.' else glCurrentLevel[0][row][col]
+                    modified += ch if ch != '.' else glCurrentLevel[0][row][col]
                     col += 1
+                glCurrentLevel[0][row] = modified
                 row += 1
 
             show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
 
-
-def respawn_beasts(block: block.TemporaryBlock):
-    if glPlayer.pos[0] == block.pos[0] and glPlayer.pos[1] == block.pos[1]:
-        game_over(GAME_OVER_STUCK)
-        return False
-    for beast in glBeasts:
-        if beast.pos[0] == block.pos[0] and beast.pos[1] == block.pos[1]:
-            beast.pos[0] = beast.oldpos[0] = beast.spawn_pos[0]
-            beast.pos[1] = beast.oldpos[1] = beast.spawn_pos[1]
-    return True
-
-def game_over(reason:int):
-    pass
 
 # =========
 # Main body
@@ -280,13 +264,8 @@ while running:
     glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
 
     if player_tick == 0:
-        if glPlayer.pos[0] == 0:
-            game_over(GAME_OVER_COMPLETE)
-            running = False
         collect_treasure()
-        running = glPlayer.move(glBeasts, temporary_items=glTemporaryItems)
-        if not running:
-            game_over(GAME_OVER_EATEN)
+        glPlayer.move(temporary_items=glTemporaryItems)
 
     # Drawing them in new positions
     # First -- non-movable level blocks with animation
@@ -297,9 +276,6 @@ while running:
     for tempBlock in glTemporaryItems:
         glMainCanvas.blit(tempBlock.get_image(player_tick), get_screen_pos(tempBlock.pos))
         if tempBlock.died:
-            if tempBlock.underlay is not None:
-                running = respawn_beasts(tempBlock)
-                glCurrentLevel[0][tempBlock.pos[0]][tempBlock.pos[1]] = tempBlock.underlay
             del glTemporaryItems[glTemporaryItems.index(tempBlock)]
 
     # Then -- player
@@ -309,13 +285,7 @@ while running:
     # And finally -- beasts
     for beast in glBeasts:
         if beast_tick == 0:
-            # Метод возвращает ложь, если монстр оказался в позиции игрока
-            # В нашей ситуации это означает съедение
-            running = beast.move(glPlayer.pos, glBeasts)
-            if not running:
-                game_over(GAME_OVER_EATEN)
-                break
-
+            beast.move(glPlayer.pos, glBeasts)
         glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
                           get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))
 
