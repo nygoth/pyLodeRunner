@@ -1,17 +1,16 @@
 # LodeRunner clone game
 # This project is for studying python programming
 
-# V 5.3
+# V 6.0
 # Game itself
 
-# Реализован временный спрайт, анимация и удаление временных спрайтов
-# С его помощью создан эффект атаки для игрока
+# Базовый геймплей реализован. Уровень можно разрушать и по голове монстров можно бегать
+# Уровень можно провалить или успешно пройти, если добраться до линии с нулевой координатой y
 
-# Теперь реализуем разрушение уровня игроком и восстановление его
-# Для этого временные спрайты должны иметь возможность сохранять элемент, который они закрывают
-# Пока это будет реализовано только для статичных блоков.
-
+# Задача данной стадии -- музыка и шлифовка кода
+import os
 import random
+import sys
 
 import pygame
 from pygame.locals import *
@@ -108,9 +107,11 @@ GAME_OVER_STRINGS = ("Congratulations!\nLevel complete!",
                      "Fail!\nEaten by zombie.",
                      "Fail!\nStuck in structure.")
 
-glBeasts = list()
-glAnimatedEntities = dict()
-glTemporaryItems = list()
+# What next after level end (fail or win)
+ACTION_QUIT = 0  # Exit program
+ACTION_NEXT = 1  # Proceed to next level
+ACTION_RESTART = 2  # Restart current level
+
 glClock = pygame.time.Clock()
 
 
@@ -223,7 +224,6 @@ def collect_treasure():
 
 def respawn_beasts(block: block.TemporaryBlock):
     if glPlayer.pos[0] == block.pos[0] and glPlayer.pos[1] == block.pos[1]:
-        game_over(GAME_OVER_STUCK)
         return False
     for beast in glBeasts:
         if beast.pos[0] == block.pos[0] and beast.pos[1] == block.pos[1]:
@@ -231,8 +231,80 @@ def respawn_beasts(block: block.TemporaryBlock):
             beast.pos[1] = beast.oldpos[1] = beast.spawn_pos[1]
     return True
 
-def game_over(reason:int):
-    pass
+
+def game_over(reason: int):
+    buttons = [btQuit, ]
+
+    if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK):
+        glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(
+            center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
+
+        btRestart.rect = btRestart.image.get_rect(
+            topleft=(LEVEL_WIDTH * BLOCK_WIDTH / 2 - btRestart.rect.width - BLOCK_WIDTH,
+                     LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
+        glMainCanvas.blit(btRestart.get_image(), btRestart.rect)
+
+        buttons.append(btRestart)
+    else:
+        glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(
+            center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
+        btNext.rect = btNext.image.get_rect(
+            topleft=(LEVEL_WIDTH * BLOCK_WIDTH / 2 - btNext.rect.width - BLOCK_WIDTH,
+                     LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
+        glMainCanvas.blit(btNext.get_image(), btNext.rect)
+        buttons.append(btNext)
+
+    btQuit.rect = btQuit.image.get_rect(topleft=(LEVEL_WIDTH * BLOCK_WIDTH / 2 + BLOCK_WIDTH,
+                                                 LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
+    glMainCanvas.blit(btQuit.get_image(), btQuit.rect)
+    pygame.display.update()
+    wait_state = True
+    ret = ACTION_QUIT
+    while wait_state:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                wait_state = False
+                break
+
+            if event.type == MOUSEBUTTONDOWN and event.button == 1:
+                for button in buttons:
+                    if button.rect.collidepoint(event.pos):
+                        draw_button(button, True)
+
+            if event.type == MOUSEBUTTONUP and event.button == 1:
+                for button in buttons:
+                    if button.rect.collidepoint(event.pos):
+                        ret = draw_button(button, False)
+                        wait_state = False
+
+            if event.type == KEYDOWN:
+                for button in buttons:
+                    if event.key in button.key:
+                        draw_button(button, True)
+
+            if event.type == KEYUP:
+                for button in buttons:
+                    if event.key in button.key:
+                        ret = draw_button(button, False)
+                        wait_state = False
+
+        pygame.display.update()
+    return ret
+
+
+def draw_button(button, state=None):
+    if state is None:
+        state = button.pressed_state
+
+    if state:
+        button.pressed_state = True
+        glMainCanvas.blit(button.get_image(), button.rect)
+        return None
+    else:
+        button.pressed_state = False
+        glMainCanvas.blit(button.get_image(), button.rect)
+        return button.event
+
 
 # =========
 # Main body
@@ -258,71 +330,131 @@ ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
 
 glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player")
 
-glTreasuresCount = 0
-glCurrentLevel = load_level("01.lvl")
-character.glCurrentLevel = glCurrentLevel
+FailTitle = block.Block("Game over title.jpg", "Titles")
+WinTitle = block.Block("Win title.jpg", "Titles")
+IntroTitle = block.Block("Intro title.jpg", "Titles")
 
-glStaticCanvas = pygame.Surface(glMainCanvas.get_size())
-show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
+btRestart = block.Button("Restart.jpg", "Restart pressed.jpg", "Buttons", event=ACTION_RESTART,
+                         key=(K_RETURN, K_KP_ENTER, K_SPACE))
+btQuit = block.Button("Quit.jpg", "Quit pressed.jpg", "Buttons", event=ACTION_QUIT, key=(K_ESCAPE,))
+btNext = block.Button("Next.jpg", "Next pressed.jpg", "Buttons", event=ACTION_NEXT,
+                      key=(K_RETURN, K_KP_ENTER, K_SPACE))
 
-glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
+game_over_reason = GAME_OVER_COMPLETE
+whatNext = ACTION_NEXT
 
+#
+# Intro screen
+#
+
+glMainCanvas.blit(IntroTitle.image,
+                  IntroTitle.image.get_rect(center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
+pygame.display.update()
+
+# Wait user input to startup our game
 running = True
-player_tick = 0
-beast_tick = 0
-
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+        if event.type == KEYUP or event.type == MOUSEBUTTONUP:
             running = False
 
-    # Erasing old creatures
+#
+# Enumerate levels
+#
+
+(levels_dir, _, levels_list) = next(os.walk(os.path.join(os.path.dirname(__file__), "Levels")), (None, None, []))
+current_level = -1
+
+#
+# Game loop itself
+#
+# С этого момента начинается специфическая для уровня инициализация, загрузка
+# и игровой цикл
+#
+
+while whatNext in (ACTION_NEXT, ACTION_RESTART):
+    glBeasts = list()
+    glAnimatedEntities = dict()
+    glTemporaryItems = list()
+
+    glTreasuresCount = 0
+
+    if whatNext == ACTION_NEXT:
+        current_level = current_level + 1 if current_level < len(levels_list) - 1 else 0
+    whatNext = ACTION_RESTART
+
+    glCurrentLevel = load_level(os.path.join(levels_dir, levels_list[current_level]))
+    character.glCurrentLevel = glCurrentLevel
+
+    glStaticCanvas = pygame.Surface(glMainCanvas.get_size())
+    show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
+
     glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
 
-    if player_tick == 0:
-        if glPlayer.pos[0] == 0:
-            game_over(GAME_OVER_COMPLETE)
-            running = False
-        collect_treasure()
-        running = glPlayer.move(glBeasts, temporary_items=glTemporaryItems)
-        if not running:
-            game_over(GAME_OVER_EATEN)
+    running = True
+    player_tick = 0
+    beast_tick = 0
 
-    # Drawing them in new positions
-    # First -- non-movable level blocks with animation
-    for animBlock in glAnimatedEntities.values():
-        glMainCanvas.blit(animBlock.get_image(player_tick), get_screen_pos(animBlock.pos))
+    while running:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                whatNext = ACTION_QUIT
+                game_over_reason = GAME_OVER_STUCK
+                running = False
 
-    # Then draw temporary items
-    for tempBlock in glTemporaryItems:
-        glMainCanvas.blit(tempBlock.get_image(player_tick), get_screen_pos(tempBlock.pos))
-        if tempBlock.died:
-            if tempBlock.underlay is not None:
-                running = respawn_beasts(tempBlock)
-                glCurrentLevel[0][tempBlock.pos[0]][tempBlock.pos[1]] = tempBlock.underlay
-            del glTemporaryItems[glTemporaryItems.index(tempBlock)]
+        # Erasing old creatures
+        glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
 
-    # Then -- player
-    glMainCanvas.blit(glPlayer.get_image(player_tick, STEP),
-                      get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, player_tick))
-
-    # And finally -- beasts
-    for beast in glBeasts:
-        if beast_tick == 0:
-            # Метод возвращает ложь, если монстр оказался в позиции игрока
-            # В нашей ситуации это означает съедение
-            running = beast.move(glPlayer.pos, glBeasts)
+        if player_tick == 0:
+            collect_treasure()
+            running = glPlayer.move(glBeasts, temporary_items=glTemporaryItems)
             if not running:
-                game_over(GAME_OVER_EATEN)
-                break
+                game_over_reason = GAME_OVER_EATEN
+            if glPlayer.oldpos[0] == 0 and running:
+                game_over_reason = GAME_OVER_COMPLETE
+                running = False
 
-        glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
-                          get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))
+        # Drawing them in new positions
+        # First -- non-movable level blocks with animation
+        for animBlock in glAnimatedEntities.values():
+            glMainCanvas.blit(animBlock.get_image(player_tick), get_screen_pos(animBlock.pos))
 
-    player_tick = player_tick + 1 if player_tick < STEP - 1 else 0
-    beast_tick = beast_tick + 1 if beast_tick < BEAST_STEP - 1 else 0
+        # Then draw temporary items
+        for tempBlock in glTemporaryItems:
+            glMainCanvas.blit(tempBlock.get_image(player_tick), get_screen_pos(tempBlock.pos))
+            if tempBlock.died:
+                if tempBlock.underlay is not None:
+                    if not respawn_beasts(tempBlock):
+                        game_over_reason = GAME_OVER_STUCK
+                        running = False
+                    glCurrentLevel[0][tempBlock.pos[0]][tempBlock.pos[1]] = tempBlock.underlay
+                del glTemporaryItems[glTemporaryItems.index(tempBlock)]
 
-    pygame.display.update()
-    glClock.tick(FPS)
+        # Then -- player
+        glMainCanvas.blit(glPlayer.get_image(player_tick, STEP),
+                          get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, player_tick))
+
+        # And finally -- beasts
+        for beast in glBeasts:
+            if beast_tick == 0:
+                # Метод возвращает ложь, если монстр оказался в позиции игрока
+                # В нашей ситуации это означает съедение
+                if not beast.move(glPlayer.pos, glBeasts):
+                    running = False
+                    game_over_reason = GAME_OVER_EATEN
+
+            glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
+                              get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))
+
+        player_tick = player_tick + 1 if player_tick < STEP - 1 else 0
+        beast_tick = beast_tick + 1 if beast_tick < BEAST_STEP - 1 else 0
+
+        pygame.display.update()
+        glClock.tick(FPS)
+
+    whatNext = game_over(game_over_reason)
 
 pygame.quit()

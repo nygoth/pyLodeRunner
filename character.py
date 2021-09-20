@@ -129,12 +129,13 @@ class Character(block.Block):
         self.move_state = STATE_HANG if glCurrentLevel[0][self.pos[0]][self.pos[1]] in HANG_BLOCKS else STATE_STAND
 
     def __in_obstacle__(self, obstacles: list, pos: tuple):
-        for obst in obstacles:
-            if pos[0] == obst.pos[0] and pos[1] == obst.pos[1]:
-                return True
+        if obstacles is not None:
+            for obst in obstacles:
+                if pos[0] == obst.pos[0] and pos[1] == obst.pos[1]:
+                    return True
         return False
 
-    def fall(self):
+    def fall(self, obstacles: list = None):
         """ Check for support block under us or staying on block which hangable
             If falling is present -- return true
         """
@@ -143,7 +144,8 @@ class Character(block.Block):
 
         if check_bounds((self.pos[0] + 1, self.pos[1])):
             if glCurrentLevel[0][self.pos[0] + 1][self.pos[1]] not in SUPPORT_BLOCKS and \
-                    glCurrentLevel[0][self.pos[0]][self.pos[1]] not in CARRY_BLOCKS:
+                    glCurrentLevel[0][self.pos[0]][self.pos[1]] not in CARRY_BLOCKS and \
+                    not self.__in_obstacle__(obstacles, (self.pos[0] + 1, self.pos[1])):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
                 self.move_direction = K_IDLE
@@ -169,10 +171,10 @@ class Character(block.Block):
             return False
 
         if check_bounds((self.pos[0] + disp[0], self.pos[1] + disp[1])):
-            # Looks like we can move
+            # Looks like we can moveю
+            # Character movement itself
             self.pos[0] += disp[0]
             self.pos[1] += disp[1]
-
             return True
 
         return False
@@ -268,7 +270,7 @@ class Player(Character):
 
         self.__set_state__()
 
-        if super().fall():
+        if super().fall(obstacles):
             self.move_direction = K_IDLE
             return True
 
@@ -276,27 +278,29 @@ class Player(Character):
             if self.pos[0] == obstacle.pos[0] and self.pos[1] == obstacle.pos[1]:
                 return False
 
-        attack = {K_LEFT: ("attack_left", -1),
-                  K_RIGHT: ("attack_right", +1)}
+        attack = {K_q: ("attack_left", -1),
+                  K_w: ("attack_right", +1)}
+        for key in attack:
+            if pressed_keys[key]:
+                if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
+                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS and \
+                        glCurrentLevel[0][self.pos[0]][self.pos[1] + attack[key][1]] == '.':
+                    fire = self.images[attack[key][0]].copy()
+                    crack = self.cracked_block.copy()
+                    fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
+                    crack.pos = [self.pos[0] + 1, self.pos[1] + attack[key][1]]
+                    crack.underlay = glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]]
+
+                    glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] = '.'
+
+                    temporary_items.append(fire)
+                    temporary_items.append(crack)
+
         for key in (K_UP, K_DOWN, K_LEFT, K_RIGHT):
             if pressed_keys[key]:
-                if pressed_keys[K_SPACE] and key in attack:
-                    if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
-                            glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
-                        fire = self.images[attack[key][0]].copy()
-                        crack = self.cracked_block.copy()
-                        fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
-                        crack.pos = [self.pos[0] + 1, self.pos[1] + attack[key][1]]
-                        crack.underlay = glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]]
-
-                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] = '.'
-
-                        temporary_items.append(fire)
-                        temporary_items.append(crack)
-                else:
-                    if super().move(MOTION[key], obstacles):
-                        self.move_direction = key
-                break
+                if super().move(MOTION[key], obstacles):
+                    self.move_direction = key
+                    break
         return True
 
 

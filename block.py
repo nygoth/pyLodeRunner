@@ -1,8 +1,10 @@
 # Классы блоков. Это базовый класс для всех спрайтов игры. Плюс, класс анимированных, но статичных спрайтов
 
-# V 2.0
+# V 2.1
 
-# Реализован класс TemporaryBlock
+# 2.1 Реализован класс Button
+
+# 2.0 Реализован класс TemporaryBlock
 
 import os
 import pygame
@@ -36,6 +38,40 @@ class Block(pygame.sprite.Sprite):
             copied.image = self.image.copy()
 
         return copied
+
+
+class Button(Block):
+    """ Элемент интерфейса -- кнопка. Имеет два состояния: нажата и не нажата."""
+
+    def __init__(self, img, pressed_img=None, subfolder="", pos: tuple = None, event: int = 0, key = 0):
+        super().__init__(img, subfolder=subfolder)
+
+        self.pressed_image = None
+        self.pressed_state = False
+        self.event = event
+        self.key = key
+        if pressed_img is not None:
+            self.pressed_image = pygame.image.load(os.path.join(self.base_images_folder, pressed_img)).convert_alpha()
+
+        if pos is not None:
+            self.rect = self.image.get_rect(topleft=pos)
+
+    def copy(self, xflip=False, yflip=False, scale=1):
+        copied = Button(None)
+
+        if xflip or yflip:
+            copied.image = pygame.transform.flip(self.image, xflip, yflip)
+            copied.pressed_image = pygame.transform.flip(self.pressed_image, xflip, yflip)
+        else:
+            copied.image = self.image.copy()
+            copied.pressed_image = self.pressed_image.copy()
+
+        copied.pressed_state = self.pressed_state
+
+        return copied
+
+    def get_image(self):
+        return (self.image, self.pressed_image)[self.pressed_state]
 
 
 class AnimatedBlock(Block):
