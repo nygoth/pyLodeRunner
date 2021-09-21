@@ -284,8 +284,8 @@ class Player(Character):
         for key in attack:
             if pressed_keys[key]:
                 if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
-                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS and \
-                        glCurrentLevel[0][self.pos[0]][self.pos[1] + attack[key][1]] == '.':
+                        glCurrentLevel[0][self.pos[0]][self.pos[1] + attack[key][1]] == '.' and \
+                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]

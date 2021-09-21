@@ -189,6 +189,8 @@ def load_level(filename):
 
             row += 1
 
+    # Additional hidden line to avoid 'index out of range' errors
+    static_layer.append(static_line)
     # Return tuple of layer in defined order
     return static_layer, exit_layer
 
@@ -361,7 +363,7 @@ glMainCanvas.blit(IntroTitle.image,
 pygame.display.update()
 
 pygame.mixer.music.load("INTRO.mp3")
-pygame.mixer.music.set_volume(0.7)
+pygame.mixer.music.set_volume(0.4)
 pygame.mixer.music.play(-1)
 
 # Wait user input to startup our game
@@ -384,8 +386,10 @@ current_level = -1
 current_song = -1
 if os.path.exists(SETTINGS_FILE):
     config.read(SETTINGS_FILE)
-    current_level = int(config.get("Progress", "current_level")) - 1
-    current_song = int(config.get("Progress", "current_song")) - 1
+    current_level = int(config.get("Progress", "current_level", fallback=-1)) - 1
+    current_song = int(config.get("Progress", "current_song", fallback=-1)) - 1
+else:
+    config.add_section("Progress")
 
 #
 # And music
@@ -416,6 +420,11 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     if whatNext == ACTION_NEXT:
         current_level = current_level + 1 if current_level < len(levels_list) - 1 else 0
     whatNext = ACTION_RESTART
+
+    config.set("Progress", "current_level", str(current_level))
+    config.set("Progress", "current_song", str(current_song))
+    with open(SETTINGS_FILE, "w") as config_file:
+        config.write(config_file)
 
     glCurrentLevel = load_level(os.path.join(levels_dir, levels_list[current_level]))
     character.glCurrentLevel = glCurrentLevel
@@ -503,11 +512,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     pygame.mixer.music.fadeout(500)
     whatNext = game_over(game_over_reason)
 
-if not os.path.exists(SETTINGS_FILE):
-    config.add_section("Progress")
 config.set("Progress", "current_level", str(current_level))
 config.set("Progress", "current_song", str(current_song))
-
 with open(SETTINGS_FILE, "w") as config_file:
     config.write(config_file)
 
