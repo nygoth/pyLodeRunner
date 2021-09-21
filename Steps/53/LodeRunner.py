@@ -1,16 +1,17 @@
 # LodeRunner clone game
 # This project is for studying python programming
 
-# V 6.0
+# V 5.3
 # Game itself
 
-# Базовый геймплей реализован. Уровень можно разрушать и по голове монстров можно бегать
-# Уровень можно провалить или успешно пройти, если добраться до линии с нулевой координатой y
+# Реализован временный спрайт, анимация и удаление временных спрайтов
+# С его помощью создан эффект атаки для игрока
 
-# Задача данной стадии -- музыка и шлифовка кода
-import os
+# Теперь реализуем разрушение уровня игроком и восстановление его
+# Для этого временные спрайты должны иметь возможность сохранять элемент, который они закрывают
+# Пока это будет реализовано только для статичных блоков.
+
 import random
-import sys
 
 import pygame
 from pygame.locals import *
@@ -18,12 +19,6 @@ from pygame.locals import *
 import block
 import character
 
-try:
-    import configparser as ConfigParser
-except ImportError:
-    import ConfigParser
-
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.ini")
 BLOCK_WIDTH = block.BLOCK_WIDTH
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22
@@ -275,41 +270,19 @@ def game_over(reason: int):
             if event.type == MOUSEBUTTONDOWN and event.button == 1:
                 for button in buttons:
                     if button.rect.collidepoint(event.pos):
-                        draw_button(button, True)
+                        button.pressed_state = True
+                        glMainCanvas.blit(button.get_image(), button.rect)
 
             if event.type == MOUSEBUTTONUP and event.button == 1:
                 for button in buttons:
                     if button.rect.collidepoint(event.pos):
-                        ret = draw_button(button, False)
-                        wait_state = False
-
-            if event.type == KEYDOWN:
-                for button in buttons:
-                    if event.key in button.key:
-                        draw_button(button, True)
-
-            if event.type == KEYUP:
-                for button in buttons:
-                    if event.key in button.key:
-                        ret = draw_button(button, False)
+                        button.pressed_state = False
+                        glMainCanvas.blit(button.get_image(), button.rect)
+                        ret = button.event
                         wait_state = False
 
         pygame.display.update()
     return ret
-
-
-def draw_button(button, state=None):
-    if state is None:
-        state = button.pressed_state
-
-    if state:
-        button.pressed_state = True
-        glMainCanvas.blit(button.get_image(), button.rect)
-        return None
-    else:
-        button.pressed_state = False
-        glMainCanvas.blit(button.get_image(), button.rect)
-        return button.event
 
 
 # =========
@@ -324,7 +297,6 @@ STATIC_BLOCKS = {'Z': block.Block("block.png"),
                  'O': block.Block("solid.png"),
                  '-': block.Block("bar.png"),
                  'P': block.Block("exit_ladder.png"),
-                 'U': block.Block("block.png"),
                  }
 ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
                                       "treasure1.png",
@@ -339,61 +311,14 @@ glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player")
 
 FailTitle = block.Block("Game over title.jpg", "Titles")
 WinTitle = block.Block("Win title.jpg", "Titles")
-IntroTitle = block.Block("Intro title.jpg", "Titles")
 
-btRestart = block.Button("Restart.jpg", "Restart pressed.jpg", "Buttons", event=ACTION_RESTART,
-                         key=(K_RETURN, K_KP_ENTER, K_SPACE))
-btQuit = block.Button("Quit.jpg", "Quit pressed.jpg", "Buttons", event=ACTION_QUIT, key=(K_ESCAPE,))
-btNext = block.Button("Next.jpg", "Next pressed.jpg", "Buttons", event=ACTION_NEXT,
-                      key=(K_RETURN, K_KP_ENTER, K_SPACE))
+btRestart = block.Button("Restart.jpg", "Restart pressed.jpg", "Buttons", event=ACTION_RESTART)
+btQuit = block.Button("Quit.jpg", "Quit pressed.jpg", "Buttons", event=ACTION_QUIT)
+btNext = block.Button("Next level.jpg", "Next level pressed.jpg", "Buttons", event=ACTION_NEXT)
 
 game_over_reason = GAME_OVER_COMPLETE
-whatNext = ACTION_NEXT
+whatNext = ACTION_RESTART
 
-config = ConfigParser.ConfigParser()
-
-#
-# Intro screen
-#
-
-glMainCanvas.blit(IntroTitle.image,
-                  IntroTitle.image.get_rect(center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
-pygame.display.update()
-
-pygame.mixer.music.load("INTRO.mp3")
-pygame.mixer.music.set_volume(0.7)
-pygame.mixer.music.play(-1)
-
-# Wait user input to startup our game
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            pygame.quit()
-            sys.exit()
-        if event.type == KEYUP or event.type == MOUSEBUTTONUP:
-            running = False
-
-pygame.mixer.music.stop()
-
-#
-# Enumerate levels
-#
-(levels_dir, _, levels_list) = next(os.walk(os.path.join(os.path.dirname(__file__), "Levels")), (None, None, []))
-current_level = -1
-current_song = -1
-if os.path.exists(SETTINGS_FILE):
-    config.read(SETTINGS_FILE)
-    current_level = int(config.get("Progress", "current_level")) - 1
-    current_song = int(config.get("Progress", "current_song")) - 1
-
-#
-# And music
-#
-(music_dir, _, songs_list) = next(os.walk(os.path.join(os.path.dirname(__file__), "Music")), (None, None, []))
-
-#
-# Game loop itself
 #
 # С этого момента начинается специфическая для уровня инициализация, загрузка
 # и игровой цикл
@@ -404,40 +329,14 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     glAnimatedEntities = dict()
     glTemporaryItems = list()
 
-    current_song += (whatNext == ACTION_NEXT)
-    if current_song >= len(songs_list):
-        current_song = 0
-    pygame.mixer.music.load(os.path.join(music_dir, songs_list[current_song]))
-    pygame.mixer.music.set_volume(0.1)
-    pygame.mixer.music.play(-1)
-
     glTreasuresCount = 0
-
-    if whatNext == ACTION_NEXT:
-        current_level = current_level + 1 if current_level < len(levels_list) - 1 else 0
-    whatNext = ACTION_RESTART
-
-    glCurrentLevel = load_level(os.path.join(levels_dir, levels_list[current_level]))
+    glCurrentLevel = load_level("01.lvl")
     character.glCurrentLevel = glCurrentLevel
 
     glStaticCanvas = pygame.Surface(glMainCanvas.get_size())
     show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
 
-    #
-    # Pause 1,5 sec to lookup new level
-    #
-    for i in range(8):
-        glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
-        if i % 2 == 0:
-            glMainCanvas.blit(glPlayer.get_image(0, STEP),
-                              get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, 0))
-            for animBlock in glAnimatedEntities.values():
-                glMainCanvas.blit(animBlock.get_image(0), get_screen_pos(animBlock.pos))
-            for beast in glBeasts:
-                glMainCanvas.blit(beast.get_image(0, BEAST_STEP),
-                                  get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, 0))
-        pygame.display.update()
-        glClock.tick(8)
+    glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
 
     running = True
     player_tick = 0
@@ -500,15 +399,6 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         pygame.display.update()
         glClock.tick(FPS)
 
-    pygame.mixer.music.fadeout(500)
     whatNext = game_over(game_over_reason)
-
-if not os.path.exists(SETTINGS_FILE):
-    config.add_section("Progress")
-config.set("Progress", "current_level", str(current_level))
-config.set("Progress", "current_song", str(current_song))
-
-with open(SETTINGS_FILE, "w") as config_file:
-    config.write(config_file)
 
 pygame.quit()

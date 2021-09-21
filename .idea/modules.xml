@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/LodeRunner.iml" filepath="$PROJECT_DIR$/.idea/LodeRunner.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/pyLodeRunner.iml" filepath="$PROJECT_DIR$/.idea/pyLodeRunner.iml" />
     </modules>
   </component>
 </project>

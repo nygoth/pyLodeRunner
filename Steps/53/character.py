@@ -56,8 +56,7 @@ SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P')  # Блоки, на которых мож�
 CARRY_BLOCKS = ('H', '-', 'P')  # Блоки, можно стоять на их фоне и не падать
 HANG_BLOCKS = ('-',)  # Блоки, на которых можно висеть
 CLIMB_BLOCKS = ('H', 'P')  # Блоки, по которым можно лезть вверх и вниз
-VIRTUAL_BLOCKS = ('U',)  # Блоки, которые мираж
-MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS  # Блоки, хранящиеся в карте проверки
+MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS  # Блоки, которые хранятся в карте проверки
 
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22
@@ -284,8 +283,7 @@ class Player(Character):
         for key in attack:
             if pressed_keys[key]:
                 if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
-                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS and \
-                        glCurrentLevel[0][self.pos[0]][self.pos[1] + attack[key][1]] == '.':
+                        glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
