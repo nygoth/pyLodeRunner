@@ -109,6 +109,7 @@ BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
 GAME_OVER_COMPLETE = 0
 GAME_OVER_EATEN = 1
 GAME_OVER_STUCK = 2
+GAME_OVER_USEREND = 3
 GAME_OVER_STRINGS = ("Congratulations!\nLevel complete!",
                      "Fail!\nEaten by zombie.",
                      "Fail!\nStuck in structure.")
@@ -119,6 +120,10 @@ ACTION_NEXT = 1  # Proceed to next level
 ACTION_RESTART = 2  # Restart current level
 
 glClock = pygame.time.Clock()
+
+
+def load_sound(filename):
+    return pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), "Sounds", filename))
 
 
 def get_screen_pos(pos: list, step=0, oldpos=None, tick=0):
@@ -169,12 +174,14 @@ def load_level(filename):
                                             animation_delay=TREASURE_DELAY,
                                             animation_pause=random.randrange(TREASURE_PAUSE_LIMIT[0],
                                                                              TREASURE_PAUSE_LIMIT[1],
-                                                                             TREASURE_PAUSE_LIMIT[2]))
+                                                                             TREASURE_PAUSE_LIMIT[2]),
+                                            hit_sound=load_sound("collect.wav"))
                     if ch == '+':
                         glTreasuresCount += 1
 
                 if ch == 'X':
-                    glBeasts.append(character.Beast(BEAST_FRAMES, [row, col], subfolder="Beast"))
+                    glBeasts.append(character.Beast(BEAST_FRAMES, [row, col], subfolder="Beast",
+                                                    sounds=(None, None, load_sound("beast die.wav"))))
 
                 # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                 if ch == 'I':
@@ -214,11 +221,14 @@ def collect_treasure():
     global glTreasuresCount
     key = str(glPlayer.pos[0]) + ":" + str(glPlayer.pos[1]) + ":+"
     if key in glAnimatedEntities:
+        if glAnimatedEntities[key].hit_sound is not None:
+            glAnimatedEntities[key].hit_sound.play()
         del glAnimatedEntities[key]
         glTreasuresCount -= 1
 
         # Все сокровища собраны, готовим выход
         if glTreasuresCount == 0:
+            exitAppears_sound.play()
             row = 0
             for line in glCurrentLevel[1]:
                 col = 0
@@ -235,6 +245,8 @@ def respawn_beasts(block: block.TemporaryBlock):
         return False
     for beast in glBeasts:
         if beast.pos[0] == block.pos[0] and beast.pos[1] == block.pos[1]:
+            if beast.die_sound is not None:
+                beast.die_sound.play()
             beast.pos[0] = beast.oldpos[0] = beast.spawn_pos[0]
             beast.pos[1] = beast.oldpos[1] = beast.spawn_pos[1]
     return True
@@ -243,7 +255,9 @@ def respawn_beasts(block: block.TemporaryBlock):
 def game_over(reason: int):
     buttons = [btQuit, ]
 
-    if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK):
+    if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK, GAME_OVER_USEREND):
+        if glPlayer.die_sound is not None:
+            glPlayer.die_sound[reason].play()
         glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(
             center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
 
@@ -254,6 +268,7 @@ def game_over(reason: int):
 
         buttons.append(btRestart)
     else:
+        levelEnd_sound.play()
         glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(
             center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
         btNext.rect = btNext.image.get_rect(
@@ -337,7 +352,15 @@ ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
                                       "treasure6.png",
                                       "treasure7.png",)), }
 
-glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player")
+glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
+                            sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
+                                    {GAME_OVER_EATEN: load_sound("eaten.wav"),
+                                     GAME_OVER_STUCK: load_sound("beast die.wav"),
+                                     GAME_OVER_USEREND: load_sound("user end.wav"),
+                                     }))
+
+levelEnd_sound = load_sound("level end.wav")
+exitAppears_sound = load_sound("exit.wav")
 
 FailTitle = block.Block("Game over title.jpg", "Titles")
 WinTitle = block.Block("Win title.jpg", "Titles")
@@ -408,6 +431,9 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     glAnimatedEntities = dict()
     glTemporaryItems = list()
 
+    exitAppears_sound.stop()
+    levelEnd_sound.stop()
+
     current_song += (whatNext == ACTION_NEXT)
     if current_song >= len(songs_list):
         current_song = 0
@@ -456,7 +482,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         for event in pygame.event.get():
             if event.type == QUIT:
                 whatNext = ACTION_QUIT
-                game_over_reason = GAME_OVER_STUCK
+                game_over_reason = GAME_OVER_USEREND
                 running = False
 
         # Erasing old creatures

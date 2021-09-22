@@ -72,12 +72,14 @@ class Character(block.Block):
         А также -- проверка столкновений
     """
 
-    def __init__(self, img, position=None, subfolder=""):
+    def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
         self.pos = [0, 0] if position is None else position
         self.oldpos = self.pos
         self.move_direction = K_IDLE
         self.move_state = STATE_STAND
         self.images = dict()
+
+        (self.step_sound, self.attack_sound, self.die_sound) = ((None, None, None), sounds)[sounds is not None]
 
         # Load all images as an animation sets
         super().__init__(None, subfolder)
@@ -172,8 +174,11 @@ class Character(block.Block):
             return False
 
         if check_bounds((self.pos[0] + disp[0], self.pos[1] + disp[1])):
-            # Looks like we can moveю
+            # Looks like we can move
             # Character movement itself
+            if self.step_sound is not None:
+                # self.step_sound.stop()
+                self.step_sound.play()
             self.pos[0] += disp[0]
             self.pos[1] += disp[1]
             return True
@@ -199,8 +204,8 @@ class Beast(Character):
         В общем случае, он стремится по кратчайшей траектории подойти к игроку.
     """
 
-    def __init__(self, img, position=None, subfolder=""):
-        super(Beast, self).__init__(img, position, subfolder)
+    def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
+        super(Beast, self).__init__(img, position, subfolder, sounds)
         # Запоминаем позицию рождения для возрождения чудовища в исходном месте при его смерти
         self.spawn_pos = self.pos.copy()
         self.idioticy = 0
@@ -259,8 +264,8 @@ class Player(Character):
         Здесь происходит проверка клавиатурного ввода и передача команд на движение.
     """
 
-    def __init__(self, img, position=None, subfolder=""):
-        super(Player, self).__init__(img, position, subfolder)
+    def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
+        super(Player, self).__init__(img, position, subfolder, sounds)
         self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES, list(reversed(CRACKED_BLOCK_IMAGES)),
                                                   subfolder="Animation", animation_delay=4, animation_pause=400)
 
@@ -286,6 +291,8 @@ class Player(Character):
                 if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
                         glCurrentLevel[0][self.pos[0]][self.pos[1] + attack[key][1]] == '.' and \
                         glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
+                    if self.attack_sound is not None:
+                        self.attack_sound.play()
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]

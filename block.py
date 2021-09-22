@@ -43,7 +43,7 @@ class Block(pygame.sprite.Sprite):
 class Button(Block):
     """ Элемент интерфейса -- кнопка. Имеет два состояния: нажата и не нажата."""
 
-    def __init__(self, img, pressed_img=None, subfolder="", pos: tuple = None, event: int = 0, key = 0):
+    def __init__(self, img, pressed_img=None, subfolder="", pos: tuple = None, event: int = 0, key=0):
         super().__init__(img, subfolder=subfolder)
 
         self.pressed_image = None
@@ -77,7 +77,7 @@ class Button(Block):
 class AnimatedBlock(Block):
     """Анимированный спрайт уровня. Неподвижный"""
 
-    def __init__(self, img, position=None, subfolder="", animation_delay=0, animation_pause=0):
+    def __init__(self, img, position=None, subfolder="", animation_delay=0, animation_pause=0, hit_sound=None):
         self.pos = [0, 0] if position is None else position
         self.delay = animation_delay
         self.pause = animation_pause
@@ -86,6 +86,7 @@ class AnimatedBlock(Block):
         self.ticks = 0
         self.current_frame = 0
         self.in_action = True
+        self.hit_sound = hit_sound
 
         super(AnimatedBlock, self).__init__(None, subfolder)
         if isinstance(img, (tuple, list)):
@@ -147,11 +148,13 @@ class TemporaryBlock(AnimatedBlock):
         После завершения этой анимации блок исчезает.
     """
 
-    def __init__(self, img_start, img_end=None, position=None, subfolder="", animation_delay=0, animation_pause=0):
+    def __init__(self, img_start, img_end=None, position=None, subfolder="", animation_delay=0, animation_pause=0,
+                 sound=None):
         self.images_end = None
         self.on_start = True
         self.died = False
         self.underlay = None
+        self.sound = sound
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
         if isinstance(img_end, (tuple, list)):
