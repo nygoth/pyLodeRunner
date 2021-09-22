@@ -1,13 +1,9 @@
 # LodeRunner clone game
 # This project is for studying python programming
 
-# V 6.0
-# Game itself
+# V 7.0
+# Полностью реализованная игра. Осталось немного вычистить код, и можно делать релиз.
 
-# Базовый геймплей реализован. Уровень можно разрушать и по голове монстров можно бегать
-# Уровень можно провалить или успешно пройти, если добраться до линии с нулевой координатой y
-
-# Задача данной стадии -- музыка и шлифовка кода
 import os
 import random
 import sys
@@ -17,12 +13,9 @@ from pygame.locals import *
 
 import block
 import character
+import configparser
 
-try:
-    import configparser as ConfigParser
-except ImportError:
-    import ConfigParser
-
+# Объявление глобальных констант и переменных
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.ini")
 BLOCK_WIDTH = block.BLOCK_WIDTH
 LEVEL_WIDTH = 42
@@ -37,13 +30,19 @@ FPS = TEMPO * STEP
 
 # Для корректной работы BEAST_STEP * BEAST_TEMPO должно совпадать с FPS
 # Поэтому надо подбирать значения тщательно, чтобы всё делилось нацело
+# Если эти значения совпадают со значениями игрока, монстры перемещаются с его скоростью
+# Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока
 BEAST_TEMPO = 8  # У монстров ключевых кадров меньше. Они более медлительны
 BEAST_STEP = int(FPS / BEAST_TEMPO)
 BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
 
-TREASURE_DELAY = 10
+# Константы, относящиеся к анимации сокровищ
+TREASURE_DELAY = 10  # задержка между кадрами анимации относительно FPS, чем больше значение, тем выше задержка
+# Интервал, из которого выбираются (случайным образом) паузы между фазами анимации сокровищ.
+# Так отсутствует раздражающая синхронность в анимации сокровищ
 TREASURE_PAUSE_LIMIT = (100, 400, 20)
 
+# Кадры анимации для спрайта игрока. Относительно каталога images\Player
 PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
                  "fall": ("character_maleAdventurer_fall0.png",
                           "character_maleAdventurer_fall1.png"),
@@ -77,6 +76,7 @@ PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
                                  ),
                  }
 
+# Кадры для анимации монстров. Относительно каталога images\Beast
 BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
                 "fall": ("character_zombie_fall0.png",
                          "character_zombie_fall1.png",),
@@ -106,13 +106,30 @@ BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
                              "character_zombie_climb7.png",)
                 }
 
-GAME_OVER_COMPLETE = 0
-GAME_OVER_EATEN = 1
-GAME_OVER_STUCK = 2
-GAME_OVER_USEREND = 3
-GAME_OVER_STRINGS = ("Congratulations!\nLevel complete!",
-                     "Fail!\nEaten by zombie.",
-                     "Fail!\nStuck in structure.")
+# Спрайты статичных блоков структуры уровня
+STATIC_BLOCKS = {'Z': block.Block("block.png"),
+                 'H': block.Block("ladder.png"),
+                 'O': block.Block("solid.png"),
+                 '-': block.Block("bar.png"),
+                 'P': block.Block("exit_ladder.png"),
+                 'U': block.Block("block.png"),
+                 }
+
+# Анимированные спрайты структуры уровня
+ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
+                                      "treasure1.png",
+                                      "treasure2.png",
+                                      "treasure3.png",
+                                      "treasure4.png",
+                                      "treasure5.png",
+                                      "treasure6.png",
+                                      "treasure7.png",)), }
+
+# Статусы завершения игры
+GAME_OVER_COMPLETE = 0  # Уровень пройден
+GAME_OVER_EATEN = 1  # Игрока съели
+GAME_OVER_STUCK = 2  # Игрок застрял в разрушенном блоке
+GAME_OVER_USEREND = 3  # Пользователь хочет закрыть программу
 
 # What next after level end (fail or win)
 ACTION_QUIT = 0  # Exit program
@@ -123,10 +140,12 @@ glClock = pygame.time.Clock()
 
 
 def load_sound(filename):
+    """Загрузка звукового эффекта. Все эффекты лежат в каталоге Sounds"""
     return pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), "Sounds", filename))
 
 
 def get_screen_pos(pos: list, step=0, oldpos=None, tick=0):
+    """Переводит старые и новые координаты в знакоместах в экранные координаты относительно текущего игрового тика"""
     if oldpos is None:
         return pos[1] * BLOCK_WIDTH, pos[0] * BLOCK_WIDTH
 
@@ -137,14 +156,16 @@ def get_screen_pos(pos: list, step=0, oldpos=None, tick=0):
 
 
 def init_screen(width, height):
+    """Инициализирует экран, создаёт игровое окно"""
     pygame.init()
 
     scr = pygame.display.set_mode((width, height))
-    pygame.display.set_caption("Lode Runner")
+    pygame.display.set_caption("pyLode Runner")
     return scr
 
 
 def load_level(filename):
+    """Загружает игровой уровень. Создаёт всю необходимую структуру и динамические объекты"""
     global glTreasuresCount
     static_layer = list()  # Layer for static tiles
     exit_layer = list()  # Layer for exit ladder
@@ -152,15 +173,19 @@ def load_level(filename):
     glBeasts.clear()
     glAnimatedEntities.clear()
 
+    # Уровень -- текстовый файл с буквами и символами, соответствующими структуре уровня
     with open(filename, 'r') as lvl_stream:
         row = 0
 
+        # Цикл по строкам файла
         for line in lvl_stream:
             static_line = list()
             exit_line = list()
 
             col = 0
 
+            # Цикл по отдельным символам строки. Добавляем один символ, чтобы не писать в коде лишних проверок
+            # на выход за границы массива
             for ch in line[0:LEVEL_WIDTH + 1]:
                 if ch == 'P':
                     exit_line.append(ch)
@@ -203,21 +228,23 @@ def load_level(filename):
 
 
 def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
+    """Процедура для рисования статичной части уровня на экране"""
     y = 0
 
     for row in level:
         x = 0
         for block in row:
+            # Используем метод get. Он не выдаёт ошибок, если индекс отсутствует, а возвращает None, что удобнее
             curBlock = sprites.get(block)
 
             if curBlock is not None:
                 canvas.blit(curBlock.image, curBlock.image.get_rect(topleft=(x * BLOCK_WIDTH, y * BLOCK_WIDTH)))
             x += 1
         y += 1
-    pass
 
 
 def collect_treasure():
+    """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""
     global glTreasuresCount
     key = str(glPlayer.pos[0]) + ":" + str(glPlayer.pos[1]) + ":+"
     if key in glAnimatedEntities:
@@ -241,6 +268,7 @@ def collect_treasure():
 
 
 def respawn_beasts(block: block.TemporaryBlock):
+    """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
     if glPlayer.pos[0] == block.pos[0] and glPlayer.pos[1] == block.pos[1]:
         return False
     for beast in glBeasts:
@@ -253,8 +281,11 @@ def respawn_beasts(block: block.TemporaryBlock):
 
 
 def game_over(reason: int):
+    """Действия, которые нужно выполнить при завершении игры (по любой причине)"""
     buttons = [btQuit, ]
 
+    # Если игрок уровень проиграл, то нужно проиграть соответствующий звук
+    # Кроме того, на экране заставки нужно добавить кнопку Restart
     if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK, GAME_OVER_USEREND):
         if glPlayer.die_sound is not None:
             glPlayer.die_sound[reason].play()
@@ -267,7 +298,7 @@ def game_over(reason: int):
         glMainCanvas.blit(btRestart.get_image(), btRestart.rect)
 
         buttons.append(btRestart)
-    else:
+    else:  # Если переход на следующий уровень, то а) нужный звук и б) кнопка "Next level"
         levelEnd_sound.play()
         glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(
             center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
@@ -281,14 +312,18 @@ def game_over(reason: int):
                                                  LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
     glMainCanvas.blit(btQuit.get_image(), btQuit.rect)
     pygame.display.update()
+
+    # Ждём реакции пользователя
+    # Это либо клик мыши по соответствующей кнопке, либо нажатие нужной кнопки на клавиатуре
     wait_state = True
-    ret = ACTION_QUIT
+    res = ACTION_QUIT
     while wait_state:
         for event in pygame.event.get():
             if event.type == QUIT:
                 wait_state = False
                 break
 
+            # Для мышки нужно реагировать только на левую кнопку (хранится в event.button)
             if event.type == MOUSEBUTTONDOWN and event.button == 1:
                 for button in buttons:
                     if button.rect.collidepoint(event.pos):
@@ -297,7 +332,7 @@ def game_over(reason: int):
             if event.type == MOUSEBUTTONUP and event.button == 1:
                 for button in buttons:
                     if button.rect.collidepoint(event.pos):
-                        ret = draw_button(button, False)
+                        res = draw_button(button, False)
                         wait_state = False
 
             if event.type == KEYDOWN:
@@ -308,14 +343,15 @@ def game_over(reason: int):
             if event.type == KEYUP:
                 for button in buttons:
                     if event.key in button.key:
-                        ret = draw_button(button, False)
+                        res = draw_button(button, False)
                         wait_state = False
 
         pygame.display.update()
-    return ret
+    return res
 
 
 def draw_button(button, state=None):
+    """Вспомогательная функция. Рисует на заставке кнопку в соответствующем состоянии"""
     if state is None:
         state = button.pressed_state
 
@@ -336,22 +372,6 @@ def draw_button(button, state=None):
 
 glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
 
-STATIC_BLOCKS = {'Z': block.Block("block.png"),
-                 'H': block.Block("ladder.png"),
-                 'O': block.Block("solid.png"),
-                 '-': block.Block("bar.png"),
-                 'P': block.Block("exit_ladder.png"),
-                 'U': block.Block("block.png"),
-                 }
-ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
-                                      "treasure1.png",
-                                      "treasure2.png",
-                                      "treasure3.png",
-                                      "treasure4.png",
-                                      "treasure5.png",
-                                      "treasure6.png",
-                                      "treasure7.png",)), }
-
 glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
                                     {GAME_OVER_EATEN: load_sound("eaten.wav"),
@@ -366,16 +386,17 @@ FailTitle = block.Block("Game over title.jpg", "Titles")
 WinTitle = block.Block("Win title.jpg", "Titles")
 IntroTitle = block.Block("Intro title.jpg", "Titles")
 
-btRestart = block.Button("Restart.jpg", "Restart pressed.jpg", "Buttons", event=ACTION_RESTART,
+btRestart = block.Button(("Restart.jpg", "Restart pressed.jpg"), "Buttons", event=ACTION_RESTART,
                          key=(K_RETURN, K_KP_ENTER, K_SPACE))
-btQuit = block.Button("Quit.jpg", "Quit pressed.jpg", "Buttons", event=ACTION_QUIT, key=(K_ESCAPE,))
-btNext = block.Button("Next.jpg", "Next pressed.jpg", "Buttons", event=ACTION_NEXT,
+btQuit = block.Button(("Quit.jpg", "Quit pressed.jpg"), "Buttons", event=ACTION_QUIT, key=(K_ESCAPE,))
+btNext = block.Button(("Next.jpg", "Next pressed.jpg"), "Buttons", event=ACTION_NEXT,
                       key=(K_RETURN, K_KP_ENTER, K_SPACE))
 
 game_over_reason = GAME_OVER_COMPLETE
 whatNext = ACTION_NEXT
 
-config = ConfigParser.ConfigParser()
+# В конфигурации мы храним прогресс игрока -- текущий уровень и текущую музыкальную композицию
+config = configparser.ConfigParser()
 
 #
 # Intro screen
@@ -441,12 +462,17 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     pygame.mixer.music.set_volume(0.1)
     pygame.mixer.music.play(-1)
 
+    # Мы отдельно считаем количество сокровищ, так как они хранятся в общем массиве с анимированными спрайтами.
+    # Здесь заложена техническая возможность украсить уровень разными интересными плюшками,
+    # как чисто декоративными, так и всякими препятствиями (пилы, шипы, верёвки, капающая кислота, огонь и лава и т.п.)
     glTreasuresCount = 0
 
     if whatNext == ACTION_NEXT:
         current_level = current_level + 1 if current_level < len(levels_list) - 1 else 0
     whatNext = ACTION_RESTART
 
+    # Сразу нужно сохранить прогресс. Мало ли, выключится свет, слетит игра -- игрок должен вернуться именно на тот
+    # уровень, до которого дошёл
     config.set("Progress", "current_level", str(current_level))
     config.set("Progress", "current_song", str(current_song))
     with open(SETTINGS_FILE, "w") as config_file:
@@ -459,7 +485,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
 
     #
-    # Pause 1,5 sec to lookup new level
+    # Pause 1,5 sec for user to look around new level
+    # Beasts, treasures and player are blinking at this time
     #
     for i in range(8):
         glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
@@ -525,7 +552,6 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                 if not beast.move(glPlayer.pos, glBeasts):
                     running = False
                     game_over_reason = GAME_OVER_EATEN
-
             glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
                               get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))
 

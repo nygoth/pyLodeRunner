@@ -43,35 +43,34 @@ class Block(pygame.sprite.Sprite):
 class Button(Block):
     """ Элемент интерфейса -- кнопка. Имеет два состояния: нажата и не нажата."""
 
-    def __init__(self, img, pressed_img=None, subfolder="", pos: tuple = None, event: int = 0, key=0):
-        super().__init__(img, subfolder=subfolder)
+    def __init__(self, img: tuple, subfolder="", pos: tuple = None, event: int = 0, key=0):
+        super().__init__(img[0], subfolder=subfolder)
 
-        self.pressed_image = None
+        self.images = [self.image, None]
         self.pressed_state = False
         self.event = event
         self.key = key
-        if pressed_img is not None:
-            self.pressed_image = pygame.image.load(os.path.join(self.base_images_folder, pressed_img)).convert_alpha()
+        if img[1] is not None:
+            self.images[1] = pygame.image.load(os.path.join(self.base_images_folder, img[1])).convert_alpha()
 
         if pos is not None:
             self.rect = self.image.get_rect(topleft=pos)
 
     def copy(self, xflip=False, yflip=False, scale=1):
-        copied = Button(None)
+        copied = Button((None, None))
 
         if xflip or yflip:
-            copied.image = pygame.transform.flip(self.image, xflip, yflip)
-            copied.pressed_image = pygame.transform.flip(self.pressed_image, xflip, yflip)
+            copied.images = [pygame.transform.flip(self.images[0], xflip, yflip),
+                             pygame.transform.flip(self.images[1], xflip, yflip)]
         else:
-            copied.image = self.image.copy()
-            copied.pressed_image = self.pressed_image.copy()
+            copied.images = self.images.copy()
 
         copied.pressed_state = self.pressed_state
 
         return copied
 
     def get_image(self):
-        return (self.image, self.pressed_image)[self.pressed_state]
+        return self.images[self.pressed_state]
 
 
 class AnimatedBlock(Block):
