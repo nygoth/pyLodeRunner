@@ -106,25 +106,6 @@ BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
                              "character_zombie_climb7.png",)
                 }
 
-# Спрайты статичных блоков структуры уровня
-STATIC_BLOCKS = {'Z': block.Block("block.png"),
-                 'H': block.Block("ladder.png"),
-                 'O': block.Block("solid.png"),
-                 '-': block.Block("bar.png"),
-                 'P': block.Block("exit_ladder.png"),
-                 'U': block.Block("block.png"),
-                 }
-
-# Анимированные спрайты структуры уровня
-ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
-                                      "treasure1.png",
-                                      "treasure2.png",
-                                      "treasure3.png",
-                                      "treasure4.png",
-                                      "treasure5.png",
-                                      "treasure6.png",
-                                      "treasure7.png",)), }
-
 # Статусы завершения игры
 GAME_OVER_COMPLETE = 0  # Уровень пройден
 GAME_OVER_EATEN = 1  # Игрока съели
@@ -372,6 +353,25 @@ def draw_button(button, state=None):
 
 glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
 
+# Спрайты статичных блоков структуры уровня
+STATIC_BLOCKS = {'Z': block.Block("block.png"),
+                 'H': block.Block("ladder.png"),
+                 'O': block.Block("solid.png"),
+                 '-': block.Block("bar.png"),
+                 'P': block.Block("exit_ladder.png"),
+                 'U': block.Block("block.png"),
+                 }
+
+# Анимированные спрайты структуры уровня
+ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
+                                      "treasure1.png",
+                                      "treasure2.png",
+                                      "treasure3.png",
+                                      "treasure4.png",
+                                      "treasure5.png",
+                                      "treasure6.png",
+                                      "treasure7.png",)), }
+
 glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
                                     {GAME_OVER_EATEN: load_sound("eaten.wav"),
@@ -406,7 +406,7 @@ glMainCanvas.blit(IntroTitle.image,
                   IntroTitle.image.get_rect(center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
 pygame.display.update()
 
-pygame.mixer.music.load("INTRO.mp3")
+pygame.mixer.music.load(os.path.join(os.path.dirname(__file__),"Sounds", "INTRO.mp3"))
 pygame.mixer.music.set_volume(0.4)
 pygame.mixer.music.play(-1)
 
