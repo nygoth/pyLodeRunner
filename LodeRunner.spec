@@ -6,8 +6,8 @@ block_cipher = None
 
 a = Analysis(['LodeRunner.py'],
              pathex=['O:\\Google Disk\\Python'],
-             binaries=[],
-             datas=[],
+             binaries=[('./images', 'images'), ('./Sounds', 'Sounds'), ('./Music', 'Music')],
+             datas=[('./Levels', 'Levels')],
              hiddenimports=[],
              hookspath=[],
              hooksconfig={},

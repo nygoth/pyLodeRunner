@@ -20,3 +20,22 @@
                                           |
                                           |
 ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ|
+---[ In level file remove this line and below ] ---
+Level dimensions are 42x22 blocks
+Lowest line should be always some kind of solid blocks
+Level exit is the hiest line (y=0 coordinate)
+If player somehow reached this line - level will be completed
+So, usually two upper lines are clean and exit ladder 
+should appears in them
+
+Legend:
+
+'Z' - Brick static block. Destructable
+'O' - Solid block. Indestructable
+'U' - Virtual brick block. Can fall thru
+'H' - Ladder
+'P' - Exit ladder. Appears when all treasures collected
+'-' - Horizontal bar. Hangable
+'+' - Treasure
+'X' - Beast start location. Can be many of them
+'I' - Player start location. Using only last one found

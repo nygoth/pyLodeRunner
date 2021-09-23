@@ -4,9 +4,10 @@
 # V 7.0
 # Полностью реализованная игра. Осталось немного вычистить код, и можно делать релиз.
 
-import os
+from os import path, walk
 import random
 import sys
+import json
 
 import pygame
 from pygame.locals import *
@@ -16,95 +17,7 @@ import character
 import configparser
 
 # Объявление глобальных констант и переменных
-SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "settings.ini")
-BLOCK_WIDTH = block.BLOCK_WIDTH
-LEVEL_WIDTH = 42
-LEVEL_HEIGHT = 22
-character.LEVEL_WIDTH = LEVEL_WIDTH
-character.LEVEL_HEIGHT = LEVEL_HEIGHT
-
-STEP = 16  # Шагов анимации между ключевыми кадрами (в которых игра воспринимает управление)
-TEMPO = 12  # Количество ключевых кадров в секунду. Темп игры
-PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
-FPS = TEMPO * STEP
-
-# Для корректной работы BEAST_STEP * BEAST_TEMPO должно совпадать с FPS
-# Поэтому надо подбирать значения тщательно, чтобы всё делилось нацело
-# Если эти значения совпадают со значениями игрока, монстры перемещаются с его скоростью
-# Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока
-BEAST_TEMPO = 8  # У монстров ключевых кадров меньше. Они более медлительны
-BEAST_STEP = int(FPS / BEAST_TEMPO)
-BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
-
-# Константы, относящиеся к анимации сокровищ
-TREASURE_DELAY = 10  # задержка между кадрами анимации относительно FPS, чем больше значение, тем выше задержка
-# Интервал, из которого выбираются (случайным образом) паузы между фазами анимации сокровищ.
-# Так отсутствует раздражающая синхронность в анимации сокровищ
-TREASURE_PAUSE_LIMIT = (100, 400, 20)
-
-# Кадры анимации для спрайта игрока. Относительно каталога images\Player
-PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
-                 "fall": ("character_maleAdventurer_fall0.png",
-                          "character_maleAdventurer_fall1.png"),
-                 "hang": ("character_maleAdventurer_hang_idle.png",),
-                 "walk_right": ("character_maleAdventurer_walk0.png",
-                                "character_maleAdventurer_walk1.png",
-                                "character_maleAdventurer_walk2.png",
-                                "character_maleAdventurer_walk3.png",
-                                "character_maleAdventurer_walk4.png",
-                                "character_maleAdventurer_walk5.png",
-                                "character_maleAdventurer_walk6.png",
-                                "character_maleAdventurer_walk7.png"),
-                 "walk_hang_right": ("character_maleAdventurer_hang0.png",
-                                     "character_maleAdventurer_hang1.png",
-                                     "character_maleAdventurer_hang2.png",
-                                     "character_maleAdventurer_hang3.png",
-                                     ),
-                 "climb_up": ("character_maleAdventurer_climb0.png",
-                              "character_maleAdventurer_climb1.png",
-                              "character_maleAdventurer_climb2.png",
-                              "character_maleAdventurer_climb3.png",
-                              ),
-                 "attack_left": ("attack0.png",
-                                 "attack1.png",
-                                 "attack2.png",
-                                 "attack3.png",
-                                 "attack3.png",
-                                 "attack4.png",
-                                 "attack5.png",
-                                 "attack6.png",
-                                 ),
-                 }
-
-# Кадры для анимации монстров. Относительно каталога images\Beast
-BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
-                "fall": ("character_zombie_fall0.png",
-                         "character_zombie_fall1.png",),
-                "hang": ("character_zombie_hang_idle.png",),
-                "walk_right": ("character_zombie_walk0.png",
-                               "character_zombie_walk1.png",
-                               "character_zombie_walk2.png",
-                               "character_zombie_walk3.png",
-                               "character_zombie_walk4.png",
-                               "character_zombie_walk5.png",
-                               "character_zombie_walk6.png",
-                               "character_zombie_walk7.png"),
-                "walk_hang_right": ("character_zombie_hang0.png",
-                                    "character_zombie_hang1.png",
-                                    "character_zombie_hang2.png",
-                                    "character_zombie_hang3.png",
-                                    "character_zombie_hang4.png",
-                                    "character_zombie_hang5.png",
-                                    ),
-                "climb_up": ("character_zombie_climb0.png",
-                             "character_zombie_climb1.png",
-                             "character_zombie_climb2.png",
-                             "character_zombie_climb3.png",
-                             "character_zombie_climb4.png",
-                             "character_zombie_climb5.png",
-                             "character_zombie_climb6.png",
-                             "character_zombie_climb7.png",)
-                }
+SETTINGS_FILE = path.join(path.dirname(__file__), "settings.ini")
 
 # Статусы завершения игры
 GAME_OVER_COMPLETE = 0  # Уровень пройден
@@ -122,10 +35,10 @@ glClock = pygame.time.Clock()
 
 def load_sound(filename):
     """Загрузка звукового эффекта. Все эффекты лежат в каталоге Sounds"""
-    return pygame.mixer.Sound(os.path.join(os.path.dirname(__file__), "Sounds", filename))
+    return pygame.mixer.Sound(path.join(path.dirname(__file__), "Sounds", filename))
 
 
-def get_screen_pos(pos: list, step=0, oldpos=None, tick=0):
+def get_screen_pos(pos: list, step=0.0, oldpos=None, tick=0):
     """Переводит старые и новые координаты в знакоместах в экранные координаты относительно текущего игрового тика"""
     if oldpos is None:
         return pos[1] * BLOCK_WIDTH, pos[0] * BLOCK_WIDTH
@@ -174,9 +87,10 @@ def load_level(filename):
                 else:
                     exit_line.append('.')
 
-                if ch in ANIMATED_BLOCKS:
+                if ch in ANIMATED_BLOCKS_FRAMES:
                     glAnimatedEntities[str(row) + ":" + str(col) + ":" + ch] = \
-                        block.AnimatedBlock(ANIMATED_BLOCKS[ch][1], [row, col], subfolder=ANIMATED_BLOCKS[ch][0],
+                        block.AnimatedBlock(ANIMATED_BLOCKS_FRAMES[ch][1], [row, col],
+                                            subfolder=ANIMATED_BLOCKS_FRAMES[ch][0],
                                             animation_delay=TREASURE_DELAY,
                                             animation_pause=random.randrange(TREASURE_PAUSE_LIMIT[0],
                                                                              TREASURE_PAUSE_LIMIT[1],
@@ -351,26 +265,175 @@ def draw_button(button, state=None):
 # =========
 
 
-glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
+# В конфигурации мы храним прогресс игрока -- текущий уровень и текущую музыкальную композицию
+# А также все константы и настройки
+config = configparser.ConfigParser()
+
+current_level = -1
+current_song = -1
 
 # Спрайты статичных блоков структуры уровня
-STATIC_BLOCKS = {'Z': block.Block("block.png"),
-                 'H': block.Block("ladder.png"),
-                 'O': block.Block("solid.png"),
-                 '-': block.Block("bar.png"),
-                 'P': block.Block("exit_ladder.png"),
-                 'U': block.Block("block.png"),
-                 }
+STATIC_BLOCKS_FILES = {'Z': "block.png",
+                       'H': "ladder.png",
+                       'O': "solid.png",
+                       '-': "bar.png",
+                       'P': "exit_ladder.png",
+                       'U': "block.png",
+                       }
 
 # Анимированные спрайты структуры уровня
-ANIMATED_BLOCKS = {'+': ("Treasure", ("treasure0.png",
-                                      "treasure1.png",
-                                      "treasure2.png",
-                                      "treasure3.png",
-                                      "treasure4.png",
-                                      "treasure5.png",
-                                      "treasure6.png",
-                                      "treasure7.png",)), }
+ANIMATED_BLOCKS_FRAMES = {'+': ("Treasure", ("treasure0.png",
+                                             "treasure1.png",
+                                             "treasure2.png",
+                                             "treasure3.png",
+                                             "treasure4.png",
+                                             "treasure5.png",
+                                             "treasure6.png",
+                                             "treasure7.png",)), }
+
+# Кадры анимации для спрайта игрока. Относительно каталога images\Player
+PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
+                 "fall": ("character_maleAdventurer_fall0.png",
+                          "character_maleAdventurer_fall1.png"),
+                 "hang": ("character_maleAdventurer_hang_idle.png",),
+                 "walk_right": ("character_maleAdventurer_walk0.png",
+                                "character_maleAdventurer_walk1.png",
+                                "character_maleAdventurer_walk2.png",
+                                "character_maleAdventurer_walk3.png",
+                                "character_maleAdventurer_walk4.png",
+                                "character_maleAdventurer_walk5.png",
+                                "character_maleAdventurer_walk6.png",
+                                "character_maleAdventurer_walk7.png"),
+                 "walk_hang_right": ("character_maleAdventurer_hang0.png",
+                                     "character_maleAdventurer_hang1.png",
+                                     "character_maleAdventurer_hang2.png",
+                                     "character_maleAdventurer_hang3.png",
+                                     ),
+                 "climb_up": ("character_maleAdventurer_climb0.png",
+                              "character_maleAdventurer_climb1.png",
+                              "character_maleAdventurer_climb2.png",
+                              "character_maleAdventurer_climb3.png",
+                              ),
+                 "attack_left": ("attack0.png",
+                                 "attack1.png",
+                                 "attack2.png",
+                                 "attack3.png",
+                                 "attack3.png",
+                                 "attack4.png",
+                                 "attack5.png",
+                                 "attack6.png",
+                                 ),
+                 }
+
+# Кадры для анимации монстров. Относительно каталога images\Beast
+BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
+                "fall": ("character_zombie_fall0.png",
+                         "character_zombie_fall1.png",),
+                "hang": ("character_zombie_hang_idle.png",),
+                "walk_right": ("character_zombie_walk0.png",
+                               "character_zombie_walk1.png",
+                               "character_zombie_walk2.png",
+                               "character_zombie_walk3.png",
+                               "character_zombie_walk4.png",
+                               "character_zombie_walk5.png",
+                               "character_zombie_walk6.png",
+                               "character_zombie_walk7.png"),
+                "walk_hang_right": ("character_zombie_hang0.png",
+                                    "character_zombie_hang1.png",
+                                    "character_zombie_hang2.png",
+                                    "character_zombie_hang3.png",
+                                    "character_zombie_hang4.png",
+                                    "character_zombie_hang5.png",
+                                    ),
+                "climb_up": ("character_zombie_climb0.png",
+                             "character_zombie_climb1.png",
+                             "character_zombie_climb2.png",
+                             "character_zombie_climb3.png",
+                             "character_zombie_climb4.png",
+                             "character_zombie_climb5.png",
+                             "character_zombie_climb6.png",
+                             "character_zombie_climb7.png",)
+                }
+
+# Размеры спрайтов и уровня в целом
+BLOCK_WIDTH = 45
+LEVEL_WIDTH = 42
+LEVEL_HEIGHT = 22
+
+STEP = 16  # Шагов анимации между ключевыми кадрами (в которых игра воспринимает управление)
+TEMPO = 12  # Количество ключевых кадров в секунду. Темп игры
+
+# Для корректной работы BEAST_STEP * BEAST_TEMPO должно совпадать с FPS
+# Поэтому надо подбирать значения тщательно, чтобы всё делилось нацело
+# Если эти значения совпадают со значениями игрока, монстры перемещаются с его скоростью
+# Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока
+BEAST_TEMPO = 8  # У монстров ключевых кадров меньше. Они более медлительны
+
+# Константы, относящиеся к анимации сокровищ
+TREASURE_DELAY = 10  # задержка между кадрами анимации относительно FPS, чем больше значение, тем выше задержка
+# Интервал, из которого выбираются (случайным образом) паузы между фазами анимации сокровищ.
+# Так отсутствует раздражающая синхронность в анимации сокровищ
+TREASURE_PAUSE_LIMIT = (100, 400, 20)
+
+if path.exists(SETTINGS_FILE):
+    config.read(SETTINGS_FILE)
+    current_level = int(config.get("Progress", "current level", fallback=current_level + 1)) - 1
+    current_song = int(config.get("Progress", "current song", fallback=current_song + 1)) - 1
+
+    STATIC_BLOCKS_FILES = json.loads(
+        config.get("Structure", "STATIC BLOCKS FILES", fallback=json.dumps(STATIC_BLOCKS_FILES)).replace("'", "\""))
+    ANIMATED_BLOCKS_FRAMES = json.loads(
+        config.get("Structure", "ANIMATED BLOCKS FRAMES", fallback=json.dumps(ANIMATED_BLOCKS_FRAMES)).replace("'", "\""))
+    PLAYER_FRAMES = json.loads(
+        config.get("Structure", "PLAYER FRAMES", fallback=json.dumps(PLAYER_FRAMES)).replace("'", "\""))
+    BEAST_FRAMES = json.loads(
+        config.get("Structure", "BEAST FRAMES", fallback=json.dumps(BEAST_FRAMES)).replace("'", "\""))
+    TREASURE_DELAY = int(config.get("Structure", "TREASURE DELAY", fallback=TREASURE_DELAY))
+    TREASURE_PAUSE_LIMIT = json.loads(
+        config.get("Structure", "TREASURE PAUSE LIMIT", fallback=json.dumps(TREASURE_PAUSE_LIMIT)))
+
+    BLOCK_WIDTH = int(config.get("Geometry", "BLOCK WIDTH", fallback=BLOCK_WIDTH))
+    LEVEL_WIDTH = int(config.get("Geometry", "LEVEL WIDTH", fallback=LEVEL_WIDTH))
+    LEVEL_HEIGHT = int(config.get("Geometry", "LEVEL HEIGHT", fallback=LEVEL_HEIGHT))
+
+    STEP = int(config.get("Game", "STEP", fallback=STEP))
+    TEMPO = int(config.get("Game", "TEMPO", fallback=TEMPO))
+    BEAST_TEMPO = int(config.get("Game", "BEAST TEMPO", fallback=BEAST_TEMPO))
+else:
+    config.add_section("Progress")
+    config.add_section("Game")
+    config.add_section("Geometry")
+    config.add_section("Structure")
+
+    config["Progress"]["current level"] = str(current_level)
+    config["Progress"]["current song"] = str(current_song)
+    config["Game"]["STEP"] = str(STEP)
+    config["Game"]["TEMPO"] = str(TEMPO)
+    config["Game"]["BEAST TEMPO"] = str(BEAST_TEMPO)
+    config["Geometry"]["BLOCK WIDTH"] = str(BLOCK_WIDTH)
+    config["Geometry"]["LEVEL WIDTH"] = str(LEVEL_WIDTH)
+    config["Geometry"]["LEVEL HEIGHT"] = str(LEVEL_HEIGHT)
+    config["Structure"]["STATIC BLOCKS FILES"] = json.dumps(STATIC_BLOCKS_FILES)
+    config["Structure"]["ANIMATED BLOCKS FRAMES"] = json.dumps(ANIMATED_BLOCKS_FRAMES)
+    config["Structure"]["PLAYER FRAMES"] = json.dumps(PLAYER_FRAMES)
+    config["Structure"]["BEAST FRAMES"] = json.dumps(BEAST_FRAMES)
+    config["Structure"]["TREASURE DELAY"] = json.dumps(TREASURE_DELAY)
+    config["Structure"]["TREASURE PAUSE LIMIT"] = json.dumps(TREASURE_PAUSE_LIMIT)
+
+block.BLOCK_WIDTH = BLOCK_WIDTH
+character.LEVEL_WIDTH = LEVEL_WIDTH
+character.LEVEL_HEIGHT = LEVEL_HEIGHT
+
+FPS = TEMPO * STEP
+BEAST_STEP = int(FPS / BEAST_TEMPO)
+BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
+PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
+
+glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
+
+STATIC_BLOCKS = dict()
+for ch in STATIC_BLOCKS_FILES:
+    STATIC_BLOCKS[ch] = block.Block(STATIC_BLOCKS_FILES[ch])
 
 glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
@@ -395,9 +458,6 @@ btNext = block.Button(("Next.jpg", "Next pressed.jpg"), "Buttons", event=ACTION_
 game_over_reason = GAME_OVER_COMPLETE
 whatNext = ACTION_NEXT
 
-# В конфигурации мы храним прогресс игрока -- текущий уровень и текущую музыкальную композицию
-config = configparser.ConfigParser()
-
 #
 # Intro screen
 #
@@ -406,7 +466,7 @@ glMainCanvas.blit(IntroTitle.image,
                   IntroTitle.image.get_rect(center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
 pygame.display.update()
 
-pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), "Sounds", "INTRO.mp3"))
+pygame.mixer.music.load(path.join(path.dirname(__file__), "Sounds", "INTRO.mp3"))
 pygame.mixer.music.set_volume(0.4)
 pygame.mixer.music.play(-1)
 
@@ -425,20 +485,12 @@ pygame.mixer.music.stop()
 #
 # Enumerate levels
 #
-(levels_dir, _, levels_list) = next(os.walk(os.path.join(os.path.dirname(__file__), "Levels")), (None, None, []))
-current_level = -1
-current_song = -1
-if os.path.exists(SETTINGS_FILE):
-    config.read(SETTINGS_FILE)
-    current_level = int(config.get("Progress", "current_level", fallback=-1)) - 1
-    current_song = int(config.get("Progress", "current_song", fallback=-1)) - 1
-else:
-    config.add_section("Progress")
+(levels_dir, _, levels_list) = next(walk(path.join(path.dirname(__file__), "Levels")), (None, None, []))
 
 #
 # And music
 #
-(music_dir, _, songs_list) = next(os.walk(os.path.join(os.path.dirname(__file__), "Music")), (None, None, []))
+(music_dir, _, songs_list) = next(walk(path.join(path.dirname(__file__), "Music")), (None, None, []))
 
 #
 # Game loop itself
@@ -458,7 +510,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     current_song += (whatNext == ACTION_NEXT)
     if current_song >= len(songs_list):
         current_song = 0
-    pygame.mixer.music.load(os.path.join(music_dir, songs_list[current_song]))
+    pygame.mixer.music.load(path.join(music_dir, songs_list[current_song]))
     pygame.mixer.music.set_volume(0.1)
     pygame.mixer.music.play(-1)
 
@@ -473,12 +525,12 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
 
     # Сразу нужно сохранить прогресс. Мало ли, выключится свет, слетит игра -- игрок должен вернуться именно на тот
     # уровень, до которого дошёл
-    config.set("Progress", "current_level", str(current_level))
-    config.set("Progress", "current_song", str(current_song))
+    config["Progress"]["current level"] = str(current_level)
+    config["Progress"]["current song"] = str(current_song)
     with open(SETTINGS_FILE, "w") as config_file:
         config.write(config_file)
 
-    glCurrentLevel = load_level(os.path.join(levels_dir, levels_list[current_level]))
+    glCurrentLevel = load_level(path.join(levels_dir, levels_list[current_level]))
     character.glCurrentLevel = glCurrentLevel
 
     glStaticCanvas = pygame.Surface(glMainCanvas.get_size())
@@ -564,8 +616,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     pygame.mixer.music.fadeout(500)
     whatNext = game_over(game_over_reason)
 
-config.set("Progress", "current_level", str(current_level))
-config.set("Progress", "current_song", str(current_song))
+config["Progress"]["current level"] = str(current_level)
+config["Progress"]["current song"] = str(current_song)
 with open(SETTINGS_FILE, "w") as config_file:
     config.write(config_file)
 

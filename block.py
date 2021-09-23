@@ -147,13 +147,14 @@ class TemporaryBlock(AnimatedBlock):
         После завершения этой анимации блок исчезает.
     """
 
-    def __init__(self, img_start, img_end=None, position=None, subfolder="", animation_delay=0, animation_pause=0,
+    def __init__(self, img: tuple, position=None, subfolder="", animation_delay=0, animation_pause=0,
                  sound=None):
-        self.images_end = None
         self.on_start = True
         self.died = False
         self.underlay = None
         self.sound = sound
+        self.images_end = None
+        (img_start, img_end) = img
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
         if isinstance(img_end, (tuple, list)):
@@ -203,7 +204,7 @@ class TemporaryBlock(AnimatedBlock):
         return self.images[self.current_frame].image
 
     def copy(self, xflip=False, yflip=False, scale=1):
-        copied = TemporaryBlock(None, None, self.pos, animation_delay=self.delay, animation_pause=self.pause)
+        copied = TemporaryBlock((None, None), self.pos, animation_delay=self.delay, animation_pause=self.pause)
         self.__copy_body__(copied, xflip, yflip, scale)
         if self.images_end is not None:
             copied.images_end = list()

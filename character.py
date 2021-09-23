@@ -25,15 +25,24 @@ STATES = {"idle": STATE_STAND * K_IDLE,
           "walk_hang_left": STATE_HANG * K_LEFT,
           }
 
-CRACKED_BLOCK_IMAGES = ("cracked_block0.png",
-                        "cracked_block1.png",
-                        "cracked_block2.png",
-                        "cracked_block3.png",
-                        "cracked_block4.png",
-                        "cracked_block5.png",
-                        "cracked_block6.png",
-                        "cracked_block7.png",
-                        )
+CRACKED_BLOCK_IMAGES = (("cracked_block0.png",
+                         "cracked_block1.png",
+                         "cracked_block2.png",
+                         "cracked_block3.png",
+                         "cracked_block4.png",
+                         "cracked_block5.png",
+                         "cracked_block6.png",
+                         "cracked_block7.png",
+                         ),
+                        ("cracked_block10.png",
+                         "cracked_block11.png",
+                         "cracked_block12.png",
+                         "cracked_block13.png",
+                         "cracked_block14.png",
+                         "cracked_block15.png",
+                         "cracked_block16.png",
+                         "cracked_block17.png",
+                         ))
 
 MOTION = {K_LEFT: (0, -1),
           K_RIGHT: (0, 1),
@@ -106,11 +115,11 @@ class Character(block.Block):
             attack_list = ("attack_left", "attack_right")
             for state in attack_list:
                 if state in img:
-                    self.images[state] = block.TemporaryBlock(img[state], subfolder=subfolder, animation_delay=6)
+                    self.images[state] = block.TemporaryBlock((img[state], None), subfolder=subfolder, animation_delay=6)
 
             if attack_list[0] not in self.images and \
                     attack_list[1] not in self.images:
-                self.images[attack_list[0]] = block.TemporaryBlock(None, animation_delay=6)
+                self.images[attack_list[0]] = block.TemporaryBlock((None, None), animation_delay=6)
 
             if attack_list[1] not in self.images:
                 self.images[attack_list[1]] = self.images[attack_list[0]].copy(xflip=True)
@@ -266,7 +275,7 @@ class Player(Character):
 
     def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
         super(Player, self).__init__(img, position, subfolder, sounds)
-        self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES, list(reversed(CRACKED_BLOCK_IMAGES)),
+        self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES,
                                                   subfolder="Animation", animation_delay=4, animation_pause=400)
 
     def move(self, obstacles: list = None, temporary_items: list = None):
