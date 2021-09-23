@@ -110,7 +110,7 @@ BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
 GAME_OVER_COMPLETE = 0  # Уровень пройден
 GAME_OVER_EATEN = 1  # Игрока съели
 GAME_OVER_STUCK = 2  # Игрок застрял в разрушенном блоке
-GAME_OVER_USEREND = 3  # Пользователь хочет закрыть программу
+GAME_OVER_USER_END = 3  # Пользователь хочет закрыть программу
 
 # What next after level end (fail or win)
 ACTION_QUIT = 0  # Exit program
@@ -267,7 +267,7 @@ def game_over(reason: int):
 
     # Если игрок уровень проиграл, то нужно проиграть соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
-    if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK, GAME_OVER_USEREND):
+    if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK, GAME_OVER_USER_END):
         if glPlayer.die_sound is not None:
             glPlayer.die_sound[reason].play()
         glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(
@@ -376,7 +376,7 @@ glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
                                     {GAME_OVER_EATEN: load_sound("eaten.wav"),
                                      GAME_OVER_STUCK: load_sound("beast die.wav"),
-                                     GAME_OVER_USEREND: load_sound("user end.wav"),
+                                     GAME_OVER_USER_END: load_sound("user end.wav"),
                                      }))
 
 levelEnd_sound = load_sound("level end.wav")
@@ -406,7 +406,7 @@ glMainCanvas.blit(IntroTitle.image,
                   IntroTitle.image.get_rect(center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
 pygame.display.update()
 
-pygame.mixer.music.load(os.path.join(os.path.dirname(__file__),"Sounds", "INTRO.mp3"))
+pygame.mixer.music.load(os.path.join(os.path.dirname(__file__), "Sounds", "INTRO.mp3"))
 pygame.mixer.music.set_volume(0.4)
 pygame.mixer.music.play(-1)
 
@@ -509,7 +509,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         for event in pygame.event.get():
             if event.type == QUIT:
                 whatNext = ACTION_QUIT
-                game_over_reason = GAME_OVER_USEREND
+                game_over_reason = GAME_OVER_USER_END
                 running = False
 
         # Erasing old creatures
