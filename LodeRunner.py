@@ -38,7 +38,7 @@ def load_sound(filename):
     return pygame.mixer.Sound(path.join(path.dirname(__file__), "Sounds", filename))
 
 
-def get_screen_pos(pos: list, step=0.0, oldpos=None, tick=0):
+def get_screen_pos(pos: list, step=0.0, oldpos: list = None, tick=0):
     """Переводит старые и новые координаты в знакоместах в экранные координаты относительно текущего игрового тика"""
     if oldpos is None:
         return pos[1] * BLOCK_WIDTH, pos[0] * BLOCK_WIDTH
@@ -91,10 +91,10 @@ def load_level(filename):
                     glAnimatedEntities[str(row) + ":" + str(col) + ":" + ch] = \
                         block.AnimatedBlock(ANIMATED_BLOCKS_FRAMES[ch][1], [row, col],
                                             subfolder=ANIMATED_BLOCKS_FRAMES[ch][0],
-                                            animation_delay=TREASURE_DELAY,
-                                            animation_pause=random.randrange(TREASURE_PAUSE_LIMIT[0],
-                                                                             TREASURE_PAUSE_LIMIT[1],
-                                                                             TREASURE_PAUSE_LIMIT[2]),
+                                            animation_delay=ANIMATED_BLOCKS_FRAMES[ch][2],
+                                            animation_pause=random.randrange(ANIMATED_BLOCKS_FRAMES[ch][3][0],
+                                                                             ANIMATED_BLOCKS_FRAMES[ch][3][1],
+                                                                             ANIMATED_BLOCKS_FRAMES[ch][3][2]),
                                             hit_sound=load_sound("collect.wav"))
                     if ch == '+':
                         glTreasuresCount += 1
@@ -282,14 +282,21 @@ STATIC_BLOCKS_FILES = {'Z': "block.png",
                        }
 
 # Анимированные спрайты структуры уровня
-ANIMATED_BLOCKS_FRAMES = {'+': ("Treasure", ("treasure0.png",
-                                             "treasure1.png",
-                                             "treasure2.png",
-                                             "treasure3.png",
-                                             "treasure4.png",
-                                             "treasure5.png",
-                                             "treasure6.png",
-                                             "treasure7.png",)), }
+ANIMATED_BLOCKS_FRAMES = {'+': ("Treasure",
+                                ("treasure0.png",
+                                 "treasure1.png",
+                                 "treasure2.png",
+                                 "treasure3.png",
+                                 "treasure4.png",
+                                 "treasure5.png",
+                                 "treasure6.png",
+                                 "treasure7.png",),
+                                10,  # задержка между кадрами анимации относительно FPS, больше значение - выше задержка
+                                # Интервал (минимум, максимум, шаг), из которого выбираются (случайным образом)
+                                # паузы между фазами анимации сокровищ. Так отсутствует раздражающая синхронность
+                                # в анимации сокровищ
+                                (100, 400, 20),
+                                ), }
 
 # Кадры анимации для спрайта игрока. Относительно каталога images\Player
 PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
@@ -369,28 +376,20 @@ TEMPO = 12  # Количество ключевых кадров в секунд
 # Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока
 BEAST_TEMPO = 8  # У монстров ключевых кадров меньше. Они более медлительны
 
-# Константы, относящиеся к анимации сокровищ
-TREASURE_DELAY = 10  # задержка между кадрами анимации относительно FPS, чем больше значение, тем выше задержка
-# Интервал, из которого выбираются (случайным образом) паузы между фазами анимации сокровищ.
-# Так отсутствует раздражающая синхронность в анимации сокровищ
-TREASURE_PAUSE_LIMIT = (100, 400, 20)
-
 if path.exists(SETTINGS_FILE):
     config.read(SETTINGS_FILE)
     current_level = int(config.get("Progress", "current level", fallback=current_level + 1)) - 1
     current_song = int(config.get("Progress", "current song", fallback=current_song + 1)) - 1
 
     STATIC_BLOCKS_FILES = json.loads(
-        config.get("Structure", "STATIC BLOCKS FILES", fallback=json.dumps(STATIC_BLOCKS_FILES)).replace("'", "\""))
+        config.get("Blocks", "STATIC BLOCKS FILES", fallback=json.dumps(STATIC_BLOCKS_FILES)).replace("'", "\""))
     ANIMATED_BLOCKS_FRAMES = json.loads(
-        config.get("Structure", "ANIMATED BLOCKS FRAMES", fallback=json.dumps(ANIMATED_BLOCKS_FRAMES)).replace("'", "\""))
+        config.get("Blocks", "ANIMATED BLOCKS FRAMES", fallback=json.dumps(ANIMATED_BLOCKS_FRAMES)).replace("'", "\""))
+
     PLAYER_FRAMES = json.loads(
-        config.get("Structure", "PLAYER FRAMES", fallback=json.dumps(PLAYER_FRAMES)).replace("'", "\""))
+        config.get("Characters", "PLAYER FRAMES", fallback=json.dumps(PLAYER_FRAMES)).replace("'", "\""))
     BEAST_FRAMES = json.loads(
-        config.get("Structure", "BEAST FRAMES", fallback=json.dumps(BEAST_FRAMES)).replace("'", "\""))
-    TREASURE_DELAY = int(config.get("Structure", "TREASURE DELAY", fallback=TREASURE_DELAY))
-    TREASURE_PAUSE_LIMIT = json.loads(
-        config.get("Structure", "TREASURE PAUSE LIMIT", fallback=json.dumps(TREASURE_PAUSE_LIMIT)))
+        config.get("Characters", "BEAST FRAMES", fallback=json.dumps(BEAST_FRAMES)).replace("'", "\""))
 
     BLOCK_WIDTH = int(config.get("Geometry", "BLOCK WIDTH", fallback=BLOCK_WIDTH))
     LEVEL_WIDTH = int(config.get("Geometry", "LEVEL WIDTH", fallback=LEVEL_WIDTH))
@@ -403,7 +402,8 @@ else:
     config.add_section("Progress")
     config.add_section("Game")
     config.add_section("Geometry")
-    config.add_section("Structure")
+    config.add_section("Characters")
+    config.add_section("Blocks")
 
     config["Progress"]["current level"] = str(current_level)
     config["Progress"]["current song"] = str(current_song)
@@ -413,21 +413,20 @@ else:
     config["Geometry"]["BLOCK WIDTH"] = str(BLOCK_WIDTH)
     config["Geometry"]["LEVEL WIDTH"] = str(LEVEL_WIDTH)
     config["Geometry"]["LEVEL HEIGHT"] = str(LEVEL_HEIGHT)
-    config["Structure"]["STATIC BLOCKS FILES"] = json.dumps(STATIC_BLOCKS_FILES)
-    config["Structure"]["ANIMATED BLOCKS FRAMES"] = json.dumps(ANIMATED_BLOCKS_FRAMES)
-    config["Structure"]["PLAYER FRAMES"] = json.dumps(PLAYER_FRAMES)
-    config["Structure"]["BEAST FRAMES"] = json.dumps(BEAST_FRAMES)
-    config["Structure"]["TREASURE DELAY"] = json.dumps(TREASURE_DELAY)
-    config["Structure"]["TREASURE PAUSE LIMIT"] = json.dumps(TREASURE_PAUSE_LIMIT)
-
-block.BLOCK_WIDTH = BLOCK_WIDTH
-character.LEVEL_WIDTH = LEVEL_WIDTH
-character.LEVEL_HEIGHT = LEVEL_HEIGHT
+    config["Blocks"]["STATIC BLOCKS FILES"] = json.dumps(STATIC_BLOCKS_FILES)
+    config["Blocks"]["ANIMATED BLOCKS FRAMES"] = json.dumps(ANIMATED_BLOCKS_FRAMES)
+    config["Characters"]["PLAYER FRAMES"] = json.dumps(PLAYER_FRAMES)
+    config["Characters"]["BEAST FRAMES"] = json.dumps(BEAST_FRAMES)
 
 FPS = TEMPO * STEP
 BEAST_STEP = int(FPS / BEAST_TEMPO)
 BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
 PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
+
+block.BLOCK_WIDTH = BLOCK_WIDTH
+character.LEVEL_WIDTH = LEVEL_WIDTH
+character.LEVEL_HEIGHT = LEVEL_HEIGHT
+character.CRACKED_BLOCK_LIFETIME = int(FPS * 2.2)
 
 glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
 
@@ -559,7 +558,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
 
     while running:
         for event in pygame.event.get():
-            if event.type == QUIT:
+            if event.type == QUIT or \
+                    (event.type == KEYUP and event.key == K_ESCAPE):
                 whatNext = ACTION_QUIT
                 game_over_reason = GAME_OVER_USER_END
                 running = False

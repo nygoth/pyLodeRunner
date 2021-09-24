@@ -70,6 +70,7 @@ MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS  #
 
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22
+CRACKED_BLOCK_LIFETIME = 400
 
 glCurrentLevel = list()
 
@@ -115,7 +116,8 @@ class Character(block.Block):
             attack_list = ("attack_left", "attack_right")
             for state in attack_list:
                 if state in img:
-                    self.images[state] = block.TemporaryBlock((img[state], None), subfolder=subfolder, animation_delay=6)
+                    self.images[state] = block.TemporaryBlock((img[state], None), subfolder=subfolder,
+                                                              animation_delay=6)
 
             if attack_list[0] not in self.images and \
                     attack_list[1] not in self.images:
@@ -276,7 +278,8 @@ class Player(Character):
     def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
         super(Player, self).__init__(img, position, subfolder, sounds)
         self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES,
-                                                  subfolder="Animation", animation_delay=4, animation_pause=400)
+                                                  subfolder="Animation", animation_delay=CRACKED_BLOCK_LIFETIME / 100,
+                                                  animation_pause=CRACKED_BLOCK_LIFETIME)
 
     def move(self, obstacles: list = None, temporary_items: list = None):
         pressed_keys = pygame.key.get_pressed()
