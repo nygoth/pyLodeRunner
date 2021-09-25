@@ -35,7 +35,9 @@ glClock = pygame.time.Clock()
 
 def load_sound(filename):
     """Загрузка звукового эффекта. Все эффекты лежат в каталоге Sounds"""
-    return pygame.mixer.Sound(path.join(path.dirname(__file__), "Sounds", filename))
+    snd = pygame.mixer.Sound(path.join(path.dirname(__file__), "Sounds", filename))
+    snd.set_volume(0.5)
+    return snd
 
 
 def get_screen_pos(pos: list, step=0.0, oldpos: list = None, tick=0):
@@ -398,12 +400,29 @@ if path.exists(SETTINGS_FILE):
     STEP = int(config.get("Game", "STEP", fallback=STEP))
     TEMPO = int(config.get("Game", "TEMPO", fallback=TEMPO))
     BEAST_TEMPO = int(config.get("Game", "BEAST TEMPO", fallback=BEAST_TEMPO))
+
+    character.SOLID_BLOCKS = json.loads(
+        config.get("Structure", "SOLID BLOCKS", fallback=json.dumps(character.SOLID_BLOCKS)).replace("'", "\""))
+    character.DESTRUCTABLE_BLOCKS = json.loads(
+        config.get("Structure", "DESTRUCTABLE BLOCKS",
+                   fallback=json.dumps(character.DESTRUCTABLE_BLOCKS)).replace("'", "\""))
+    character.SUPPORT_BLOCKS = json.loads(
+        config.get("Structure", "SUPPORT BLOCKS", fallback=json.dumps(character.SUPPORT_BLOCKS)).replace("'", "\""))
+    character.CARRY_BLOCKS = json.loads(
+        config.get("Structure", "CARRY BLOCKS", fallback=json.dumps(character.CARRY_BLOCKS)).replace("'", "\""))
+    character.HANG_BLOCKS = json.loads(
+        config.get("Structure", "HANG BLOCKS", fallback=json.dumps(character.HANG_BLOCKS)).replace("'", "\""))
+    character.CLIMB_BLOCKS = json.loads(
+        config.get("Structure", "CLIMB BLOCKS", fallback=json.dumps(character.CLIMB_BLOCKS)).replace("'", "\""))
+    character.VIRTUAL_BLOCKS = json.loads(
+        config.get("Structure", "VIRTUAL BLOCKS", fallback=json.dumps(character.VIRTUAL_BLOCKS)).replace("'", "\""))
 else:
     config.add_section("Progress")
     config.add_section("Game")
     config.add_section("Geometry")
     config.add_section("Characters")
     config.add_section("Blocks")
+    config.add_section("Structure")
 
     config["Progress"]["current level"] = str(current_level)
     config["Progress"]["current song"] = str(current_song)
@@ -417,6 +436,13 @@ else:
     config["Blocks"]["ANIMATED BLOCKS FRAMES"] = json.dumps(ANIMATED_BLOCKS_FRAMES)
     config["Characters"]["PLAYER FRAMES"] = json.dumps(PLAYER_FRAMES)
     config["Characters"]["BEAST FRAMES"] = json.dumps(BEAST_FRAMES)
+    config["Structure"]["SOLID BLOCKS"] = json.dumps(character.SOLID_BLOCKS)
+    config["Structure"]["DESTRUCTABLE BLOCKS"] = json.dumps(character.DESTRUCTABLE_BLOCKS)
+    config["Structure"]["SUPPORT BLOCKS"] = json.dumps(character.SUPPORT_BLOCKS)
+    config["Structure"]["CARRY BLOCKS"] = json.dumps(character.CARRY_BLOCKS)
+    config["Structure"]["HANG BLOCKS"] = json.dumps(character.HANG_BLOCKS)
+    config["Structure"]["CLIMB BLOCKS"] = json.dumps(character.CLIMB_BLOCKS)
+    config["Structure"]["VIRTUAL BLOCKS"] = json.dumps(character.VIRTUAL_BLOCKS)
 
 FPS = TEMPO * STEP
 BEAST_STEP = int(FPS / BEAST_TEMPO)
@@ -466,7 +492,7 @@ glMainCanvas.blit(IntroTitle.image,
 pygame.display.update()
 
 pygame.mixer.music.load(path.join(path.dirname(__file__), "Sounds", "INTRO.mp3"))
-pygame.mixer.music.set_volume(0.4)
+pygame.mixer.music.set_volume(0.3)
 pygame.mixer.music.play(-1)
 
 # Wait user input to startup our game

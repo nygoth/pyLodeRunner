@@ -9,7 +9,7 @@
 import os
 import pygame
 
-BLOCK_WIDTH = 45
+BLOCK_WIDTH = 38
 
 
 class Block(pygame.sprite.Sprite):
