@@ -168,18 +168,18 @@ def collect_treasures(pos):
             del glAnimatedEntities[key]
             glTreasuresCount -= 1
 
-    # Все сокровища собраны, готовим выход
-    if glTreasuresCount <= 0:
-        exitAppears_sound.play()
-        row = 0
-        for line in glCurrentLevel[1]:
-            col = 0
-            for ch in line:
-                glCurrentLevel[0][row][col] = ch if ch != '.' else glCurrentLevel[0][row][col]
-                col += 1
-            row += 1
+            # Все сокровища собраны, готовим выход
+            if glTreasuresCount <= 0:
+                exitAppears_sound.play()
+                row = 0
+                for line in glCurrentLevel[1]:
+                    col = 0
+                    for ch in line:
+                        glCurrentLevel[0][row][col] = ch if ch != '.' else glCurrentLevel[0][row][col]
+                        col += 1
+                    row += 1
 
-        show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
+                show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
 
 
 def die_beast(beast):
