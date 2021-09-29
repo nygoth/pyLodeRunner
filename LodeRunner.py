@@ -1,8 +1,16 @@
 # LodeRunner clone game
 # This project is for studying python programming
 
-# V 7.0
+# V 7.5
 # Полностью реализованная игра. Осталось немного вычистить код, и можно делать релиз.
+
+# В данном проекте есть один серьёзный недочёт дизайна -- сейчас при загрузке уровня
+# все анимированные спрайты создаются и загружаются заново. На каждый новый уровень. Причём. на каждый блок своя копия.
+# Это неоптимально. Картинки анимации, например, достаточно загрузить один раз за всю игру
+# по одному экземпляру на каждый тип анимированного спрайта.
+# Для этого можно ввсти промежуточный класс между Block и всеми наследниками -- что-то типа ImageArray
+# Или перед Block, а последний сделать вырожденным случаем.
+
 
 from os import path, walk
 import random
@@ -23,7 +31,8 @@ SETTINGS_FILE = path.join(path.dirname(__file__), "settings.ini")
 GAME_OVER_COMPLETE = 0  # Уровень пройден
 GAME_OVER_EATEN = 1  # Игрока съели
 GAME_OVER_STUCK = 2  # Игрок застрял в разрушенном блоке
-GAME_OVER_USER_END = 3  # Пользователь хочет закрыть программу
+GAME_OVER_KILLED = 3  # Игрок убит в смертельном блоке
+GAME_OVER_USER_END = 100  # Пользователь хочет закрыть программу
 
 # What next after level end (fail or win)
 ACTION_QUIT = 0  # Exit program
@@ -35,6 +44,8 @@ glClock = pygame.time.Clock()
 
 def load_sound(filename):
     """Загрузка звукового эффекта. Все эффекты лежат в каталоге Sounds"""
+    if filename is None:
+        return None
     snd = pygame.mixer.Sound(path.join(path.dirname(__file__), "Sounds", filename))
     snd.set_volume(0.5)
     return snd
@@ -89,21 +100,27 @@ def load_level(filename):
                 else:
                     exit_line.append('.')
 
-                if ch in ANIMATED_BLOCKS_FRAMES:
+                if ch in ANIMATED_BLOCKS:
                     glAnimatedEntities[str(row) + ":" + str(col) + ":" + ch] = \
-                        block.AnimatedBlock(ANIMATED_BLOCKS_FRAMES[ch][1], [row, col],
-                                            subfolder=ANIMATED_BLOCKS_FRAMES[ch][0],
-                                            animation_delay=ANIMATED_BLOCKS_FRAMES[ch][2],
-                                            animation_pause=random.randrange(ANIMATED_BLOCKS_FRAMES[ch][3][0],
-                                                                             ANIMATED_BLOCKS_FRAMES[ch][3][1],
-                                                                             ANIMATED_BLOCKS_FRAMES[ch][3][2]),
-                                            hit_sound=load_sound("collect.wav"))
-                    if ch == '+':
+                        block.AnimatedBlock(ANIMATED_BLOCKS[ch][1], [row, col],
+                                            subfolder=ANIMATED_BLOCKS[ch][0],
+                                            animation_delay=random.randrange(ANIMATED_BLOCKS[ch][2][0],
+                                                                             ANIMATED_BLOCKS[ch][2][1],
+                                                                             ANIMATED_BLOCKS[ch][2][2]) \
+                                                if isinstance(ANIMATED_BLOCKS[ch][2], (list, tuple)) \
+                                                else ANIMATED_BLOCKS[ch][2],
+                                            animation_pause=random.randrange(ANIMATED_BLOCKS[ch][3][0],
+                                                                             ANIMATED_BLOCKS[ch][3][1],
+                                                                             ANIMATED_BLOCKS[ch][3][2]) \
+                                                if isinstance(ANIMATED_BLOCKS[ch][3], (list, tuple)) \
+                                                else ANIMATED_BLOCKS[ch][3],
+                                            hit_sound=load_sound(ANIMATED_BLOCKS[ch][4]))
+                    if ch in character.TREASURE_BLOCKS:
                         glTreasuresCount += 1
 
-                if ch == 'X':
-                    glBeasts.append(character.Beast(BEAST_FRAMES, [row, col], subfolder="Beast",
-                                                    sounds=(None, None, load_sound("beast die.wav"))))
+                if ch in character.BEAST_BLOCKS:
+                    glBeasts.append(character.Beast(BEAST_FRAMES[ch], [row, col], subfolder=BEAST_FRAMES[ch]["folder"],
+                                                    sounds=(None, None, load_sound(BEAST_FRAMES[ch]["dieSound"]))))
 
                 # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                 if ch == 'I':
@@ -140,40 +157,45 @@ def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
         y += 1
 
 
-def collect_treasure():
+def collect_treasures(pos):
     """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""
     global glTreasuresCount
-    key = str(glPlayer.pos[0]) + ":" + str(glPlayer.pos[1]) + ":+"
-    if key in glAnimatedEntities:
-        if glAnimatedEntities[key].hit_sound is not None:
-            glAnimatedEntities[key].hit_sound.play()
-        del glAnimatedEntities[key]
-        glTreasuresCount -= 1
+    for ch in character.TREASURE_BLOCKS:
+        key = str(pos[0]) + ":" + str(pos[1]) + ":" + ch
+        if key in glAnimatedEntities:
+            if glAnimatedEntities[key].hit_sound is not None:
+                glAnimatedEntities[key].hit_sound.play()
+            del glAnimatedEntities[key]
+            glTreasuresCount -= 1
 
-        # Все сокровища собраны, готовим выход
-        if glTreasuresCount == 0:
-            exitAppears_sound.play()
-            row = 0
-            for line in glCurrentLevel[1]:
-                col = 0
-                for ch in line:
-                    glCurrentLevel[0][row][col] = ch if ch != '.' else glCurrentLevel[0][row][col]
-                    col += 1
-                row += 1
+    # Все сокровища собраны, готовим выход
+    if glTreasuresCount <= 0:
+        exitAppears_sound.play()
+        row = 0
+        for line in glCurrentLevel[1]:
+            col = 0
+            for ch in line:
+                glCurrentLevel[0][row][col] = ch if ch != '.' else glCurrentLevel[0][row][col]
+                col += 1
+            row += 1
 
-            show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
+        show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
 
 
-def respawn_beasts(block: block.TemporaryBlock):
+def die_beast(beast):
+    if beast.die_sound is not None:
+        beast.die_sound.play()
+    beast.pos[0] = beast.oldpos[0] = beast.spawn_pos[0]
+    beast.pos[1] = beast.oldpos[1] = beast.spawn_pos[1]
+
+
+def respawn_beasts(block: block.Block):
     """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
     if glPlayer.pos[0] == block.pos[0] and glPlayer.pos[1] == block.pos[1]:
         return False
     for beast in glBeasts:
         if beast.pos[0] == block.pos[0] and beast.pos[1] == block.pos[1]:
-            if beast.die_sound is not None:
-                beast.die_sound.play()
-            beast.pos[0] = beast.oldpos[0] = beast.spawn_pos[0]
-            beast.pos[1] = beast.oldpos[1] = beast.spawn_pos[1]
+            die_beast(beast)
     return True
 
 
@@ -183,7 +205,7 @@ def game_over(reason: int):
 
     # Если игрок уровень проиграл, то нужно проиграть соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
-    if reason in (GAME_OVER_EATEN, GAME_OVER_STUCK, GAME_OVER_USER_END):
+    if reason != GAME_OVER_COMPLETE:
         if glPlayer.die_sound is not None:
             glPlayer.die_sound[reason].play()
         glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(
@@ -284,21 +306,99 @@ STATIC_BLOCKS_FILES = {'Z': "block.png",
                        }
 
 # Анимированные спрайты структуры уровня
-ANIMATED_BLOCKS_FRAMES = {'+': ("Treasure",
-                                ("treasure0.png",
-                                 "treasure1.png",
-                                 "treasure2.png",
-                                 "treasure3.png",
-                                 "treasure4.png",
-                                 "treasure5.png",
-                                 "treasure6.png",
-                                 "treasure7.png",),
-                                10,  # задержка между кадрами анимации относительно FPS, больше значение - выше задержка
-                                # Интервал (минимум, максимум, шаг), из которого выбираются (случайным образом)
-                                # паузы между фазами анимации сокровищ. Так отсутствует раздражающая синхронность
-                                # в анимации сокровищ
-                                (100, 400, 20),
-                                ), }
+ANIMATED_BLOCKS = {'+': ("Treasure",
+                         ("treasure0.png",
+                          "treasure1.png",
+                          "treasure2.png",
+                          "treasure3.png",
+                          "treasure4.png",
+                          "treasure5.png",
+                          "treasure6.png",
+                          "treasure7.png",
+                          ),
+                         10,  # задержка между кадрами анимации относительно FPS, больше значение - выше задержка
+                         # Интервал (минимум, максимум, шаг), из которого выбираются (случайным образом)
+                         # паузы между фазами анимации сокровищ. Так отсутствует раздражающая синхронность
+                         # в анимации сокровищ
+                         (100, 400, 20),
+                         "collect.wav",
+                         ),
+                   '*': ("Animation",
+                         ("saw0.png",
+                          "saw1.png",
+                          "saw2.png",
+                          ),
+                         5,  # задержка между кадрами анимации относительно FPS, больше значение - выше задержка
+                         0,  # пауза анимации. Можно указать и просто число
+                         "saw.wav",
+                         ),
+                   '/': ("Animation",  # Rope body
+                         ("Rope0.png",
+                          "Rope1.png",
+                          "Rope0.png",
+                          "Rope2.png",
+                          ),
+                         20,
+                         0,
+                         None,
+                         ),
+                   '\\': ("Animation",  # Rope body
+                          ("Rope0.png",
+                           "Rope2.png",
+                           "Rope0.png",
+                           "Rope1.png",
+                           ),
+                          20,
+                          0,
+                          None,
+                          ),
+                   'T': ("Animation",  # Rope head (hook plate)
+                         ("Rope base0.png",
+                          "Rope base1.png",
+                          "Rope base0.png",
+                          "Rope base2.png",
+                          ),
+                         20,
+                         0,
+                         None,
+                         ),
+                   'J': ("Animation",  # Rope tail (knot)
+                         ("Rope tail0.png",
+                          "Rope tail1.png",
+                          "Rope tail0.png",
+                          "Rope tail2.png",
+                          ),
+                         20,
+                         0,
+                         None,
+                         ),
+                   'L': ("Animation",  # Rope tail (knot)
+                         ("Rope tail0.png",
+                          "Rope tail2.png",
+                          "Rope tail0.png",
+                          "Rope tail1.png",
+                          ),
+                         20,
+                         0,
+                         None,
+                         ),
+                   '~': ("Animation",  # Lava
+                         ("Lava0.png",
+                          "Lava1.png",
+                          "Lava2.png",
+                          "Lava3.png",
+                          "Lava4.png",
+                          "Lava5.png",
+                          "Lava6.png",
+                          "Lava7.png",
+                          "Lava8.png",
+                          "Lava9.png",
+                          ),
+                         (15, 30, 1),
+                         (1, 20, 1),
+                         None,
+                         ),
+                   }
 
 # Кадры анимации для спрайта игрока. Относительно каталога images\Player
 PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
@@ -335,41 +435,44 @@ PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
                  }
 
 # Кадры для анимации монстров. Относительно каталога images\Beast
-BEAST_FRAMES = {"idle": ("character_zombie_idle.png",),
-                "fall": ("character_zombie_fall0.png",
-                         "character_zombie_fall1.png",),
-                "hang": ("character_zombie_hang_idle.png",),
-                "walk_right": ("character_zombie_walk0.png",
-                               "character_zombie_walk1.png",
-                               "character_zombie_walk2.png",
-                               "character_zombie_walk3.png",
-                               "character_zombie_walk4.png",
-                               "character_zombie_walk5.png",
-                               "character_zombie_walk6.png",
-                               "character_zombie_walk7.png"),
-                "walk_hang_right": ("character_zombie_hang0.png",
-                                    "character_zombie_hang1.png",
-                                    "character_zombie_hang2.png",
-                                    "character_zombie_hang3.png",
-                                    "character_zombie_hang4.png",
-                                    "character_zombie_hang5.png",
-                                    ),
-                "climb_up": ("character_zombie_climb0.png",
-                             "character_zombie_climb1.png",
-                             "character_zombie_climb2.png",
-                             "character_zombie_climb3.png",
-                             "character_zombie_climb4.png",
-                             "character_zombie_climb5.png",
-                             "character_zombie_climb6.png",
-                             "character_zombie_climb7.png",)
+BEAST_FRAMES = {'X': {"folder": "Beast",
+                      "dieSound": "beast die.wav",
+                      "idle": ("character_zombie_idle.png",),
+                      "fall": ("character_zombie_fall0.png",
+                               "character_zombie_fall1.png",),
+                      "hang": ("character_zombie_hang_idle.png",),
+                      "walk_right": ("character_zombie_walk0.png",
+                                     "character_zombie_walk1.png",
+                                     "character_zombie_walk2.png",
+                                     "character_zombie_walk3.png",
+                                     "character_zombie_walk4.png",
+                                     "character_zombie_walk5.png",
+                                     "character_zombie_walk6.png",
+                                     "character_zombie_walk7.png"),
+                      "walk_hang_right": ("character_zombie_hang0.png",
+                                          "character_zombie_hang1.png",
+                                          "character_zombie_hang2.png",
+                                          "character_zombie_hang3.png",
+                                          "character_zombie_hang4.png",
+                                          "character_zombie_hang5.png",
+                                          ),
+                      "climb_up": ("character_zombie_climb0.png",
+                                   "character_zombie_climb1.png",
+                                   "character_zombie_climb2.png",
+                                   "character_zombie_climb3.png",
+                                   "character_zombie_climb4.png",
+                                   "character_zombie_climb5.png",
+                                   "character_zombie_climb6.png",
+                                   "character_zombie_climb7.png",)
+                      },
                 }
 
 # Размеры спрайтов и уровня в целом
-BLOCK_WIDTH = 45
+BLOCK_WIDTH = 38
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22
 
-STEP = 16  # Шагов анимации между ключевыми кадрами (в которых игра воспринимает управление)
+STEP = 24  # Шагов анимации между ключевыми кадрами (в которых игра воспринимает управление)
 TEMPO = 12  # Количество ключевых кадров в секунду. Темп игры
 
 # Для корректной работы BEAST_STEP * BEAST_TEMPO должно совпадать с FPS
@@ -385,8 +488,8 @@ if path.exists(SETTINGS_FILE):
 
     STATIC_BLOCKS_FILES = json.loads(
         config.get("Blocks", "STATIC BLOCKS FILES", fallback=json.dumps(STATIC_BLOCKS_FILES)).replace("'", "\""))
-    ANIMATED_BLOCKS_FRAMES = json.loads(
-        config.get("Blocks", "ANIMATED BLOCKS FRAMES", fallback=json.dumps(ANIMATED_BLOCKS_FRAMES)).replace("'", "\""))
+    ANIMATED_BLOCKS = json.loads(
+        config.get("Blocks", "ANIMATED BLOCKS", fallback=json.dumps(ANIMATED_BLOCKS)).replace("'", "\""))
 
     PLAYER_FRAMES = json.loads(
         config.get("Characters", "PLAYER FRAMES", fallback=json.dumps(PLAYER_FRAMES)).replace("'", "\""))
@@ -416,6 +519,12 @@ if path.exists(SETTINGS_FILE):
         config.get("Structure", "CLIMB BLOCKS", fallback=json.dumps(character.CLIMB_BLOCKS)).replace("'", "\""))
     character.VIRTUAL_BLOCKS = json.loads(
         config.get("Structure", "VIRTUAL BLOCKS", fallback=json.dumps(character.VIRTUAL_BLOCKS)).replace("'", "\""))
+    character.TREASURE_BLOCKS = json.loads(
+        config.get("Structure", "TREASURE BLOCKS", fallback=json.dumps(character.TREASURE_BLOCKS)).replace("'", "\""))
+    character.BEAST_BLOCKS = json.loads(
+        config.get("Structure", "BEAST BLOCKS", fallback=json.dumps(character.BEAST_BLOCKS)).replace("'", "\""))
+    character.DEADLY_BLOCKS = json.loads(
+        config.get("Structure", "DEADLY BLOCKS", fallback=json.dumps(character.DEADLY_BLOCKS)).replace("'", "\""))
 else:
     config.add_section("Progress")
     config.add_section("Game")
@@ -433,7 +542,7 @@ else:
     config["Geometry"]["LEVEL WIDTH"] = str(LEVEL_WIDTH)
     config["Geometry"]["LEVEL HEIGHT"] = str(LEVEL_HEIGHT)
     config["Blocks"]["STATIC BLOCKS FILES"] = json.dumps(STATIC_BLOCKS_FILES)
-    config["Blocks"]["ANIMATED BLOCKS FRAMES"] = json.dumps(ANIMATED_BLOCKS_FRAMES)
+    config["Blocks"]["ANIMATED BLOCKS"] = json.dumps(ANIMATED_BLOCKS)
     config["Characters"]["PLAYER FRAMES"] = json.dumps(PLAYER_FRAMES)
     config["Characters"]["BEAST FRAMES"] = json.dumps(BEAST_FRAMES)
     config["Structure"]["SOLID BLOCKS"] = json.dumps(character.SOLID_BLOCKS)
@@ -443,6 +552,9 @@ else:
     config["Structure"]["HANG BLOCKS"] = json.dumps(character.HANG_BLOCKS)
     config["Structure"]["CLIMB BLOCKS"] = json.dumps(character.CLIMB_BLOCKS)
     config["Structure"]["VIRTUAL BLOCKS"] = json.dumps(character.VIRTUAL_BLOCKS)
+    config["Structure"]["TREASURE BLOCKS"] = json.dumps(character.TREASURE_BLOCKS)
+    config["Structure"]["BEAST BLOCKS"] = json.dumps(character.BEAST_BLOCKS)
+    config["Structure"]["DEADLY BLOCKS"] = json.dumps(character.DEADLY_BLOCKS)
 
 FPS = TEMPO * STEP
 BEAST_STEP = int(FPS / BEAST_TEMPO)
@@ -463,6 +575,7 @@ for ch in STATIC_BLOCKS_FILES:
 glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
                                     {GAME_OVER_EATEN: load_sound("eaten.wav"),
+                                     GAME_OVER_KILLED: load_sound("beast die.wav"),
                                      GAME_OVER_STUCK: load_sound("beast die.wav"),
                                      GAME_OVER_USER_END: load_sound("user end.wav"),
                                      }))
@@ -567,11 +680,11 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     #
     for i in range(8):
         glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
+        for animBlock in glAnimatedEntities.values():
+            glMainCanvas.blit(animBlock.get_image(0), get_screen_pos(animBlock.pos))
         if i % 2 == 0:
             glMainCanvas.blit(glPlayer.get_image(0, STEP),
                               get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, 0))
-            for animBlock in glAnimatedEntities.values():
-                glMainCanvas.blit(animBlock.get_image(0), get_screen_pos(animBlock.pos))
             for beast in glBeasts:
                 glMainCanvas.blit(beast.get_image(0, BEAST_STEP),
                                   get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, 0))
@@ -582,7 +695,13 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     player_tick = 0
     beast_tick = 0
 
+    # =================================================================================================
+    # Game lifecycle
+    # =================================================================================================
     while running:
+        # =================================
+        # Actions on user interrupt attempt
+        # =================================
         for event in pygame.event.get():
             if event.type == QUIT or \
                     (event.type == KEYUP and event.key == K_ESCAPE):
@@ -590,24 +709,34 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                 game_over_reason = GAME_OVER_USER_END
                 running = False
 
-        # Erasing old creatures
+        # =====================
+        # Erasing old animation
+        # =====================
         glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
 
+        # =======================================
+        # Do player movement and collisions check
+        # =======================================
         if player_tick == 0:
-            collect_treasure()
             running = glPlayer.move(glBeasts, temporary_items=glTemporaryItems)
             if not running:
                 game_over_reason = GAME_OVER_EATEN
+            else:
+                collect_treasures(glPlayer.oldpos)
             if glPlayer.oldpos[0] == 0 and running:
                 game_over_reason = GAME_OVER_COMPLETE
                 running = False
 
-        # Drawing them in new positions
+        # ================================================
+        # Drawing items in their positions
         # First -- non-movable level blocks with animation
+        # ================================================
         for animBlock in glAnimatedEntities.values():
             glMainCanvas.blit(animBlock.get_image(player_tick), get_screen_pos(animBlock.pos))
 
-        # Then draw temporary items
+        # ==================================================================
+        # Second -- draw temporary items and do collision check if necessary
+        # ==================================================================
         for tempBlock in glTemporaryItems:
             glMainCanvas.blit(tempBlock.get_image(player_tick), get_screen_pos(tempBlock.pos))
             if tempBlock.died:
@@ -618,11 +747,15 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                     glCurrentLevel[0][tempBlock.pos[0]][tempBlock.pos[1]] = tempBlock.underlay
                 del glTemporaryItems[glTemporaryItems.index(tempBlock)]
 
-        # Then -- player
+        # ===========================
+        # Third -- draw player sprite
+        # ===========================
         glMainCanvas.blit(glPlayer.get_image(player_tick, STEP),
                           get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, player_tick))
 
-        # And finally -- beasts
+        # ==================================================================
+        # Fourth -- move all beasts and again do collision check with player
+        # ==================================================================
         for beast in glBeasts:
             if beast_tick == 0:
                 # Метод возвращает ложь, если монстр оказался в позиции игрока
@@ -630,8 +763,29 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                 if not beast.move(glPlayer.pos, glBeasts):
                     running = False
                     game_over_reason = GAME_OVER_EATEN
+                else:
+                    if glCurrentLevel[0][beast.pos[0]][beast.pos[1]] in character.DEADLY_BLOCKS:
+                        key = str(beast.pos[0]) + ":" + str(beast.pos[1]) + ":" + \
+                              glCurrentLevel[0][beast.pos[0]][beast.pos[1]]
+                        if glAnimatedEntities[key].hit_sound is not None:
+                            glAnimatedEntities[key].hit_sound.play()
+                    if glCurrentLevel[0][beast.oldpos[0]][beast.oldpos[1]] in character.DEADLY_BLOCKS:
+                        key = str(beast.oldpos[0]) + ":" + str(beast.oldpos[1]) + ":" + \
+                              glCurrentLevel[0][beast.oldpos[0]][beast.oldpos[1]]
+                        die_beast(beast)
             glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
                               get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))
+
+        # ==============================================================
+        # And finally -- check characters for standing over deadly block
+        # ==============================================================
+        if glCurrentLevel[0][glPlayer.oldpos[0]][glPlayer.oldpos[1]] in character.DEADLY_BLOCKS:
+            key = str(glPlayer.oldpos[0]) + ":" + str(glPlayer.oldpos[1]) + ":" + \
+                  glCurrentLevel[0][glPlayer.oldpos[0]][glPlayer.oldpos[1]]
+            if glAnimatedEntities[key].hit_sound is not None:
+                glAnimatedEntities[key].hit_sound.play()
+            running = False
+            game_over_reason = GAME_OVER_KILLED
 
         player_tick = player_tick + 1 if player_tick < STEP - 1 else 0
         beast_tick = beast_tick + 1 if beast_tick < BEAST_STEP - 1 else 0

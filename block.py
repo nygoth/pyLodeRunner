@@ -6,7 +6,7 @@
 
 # 2.0 Реализован класс TemporaryBlock
 
-import os
+from os import path
 import pygame
 
 BLOCK_WIDTH = 38
@@ -17,10 +17,13 @@ class Block(pygame.sprite.Sprite):
 
     def __init__(self, img, subfolder=""):
         super().__init__()
-        self.base_images_folder = os.path.join(os.path.dirname(__file__), "images", subfolder)
+        self.base_images_folder = path.join(path.dirname(__file__), "images", subfolder)
 
         if img is not None:
-            self.image = pygame.image.load(os.path.join(self.base_images_folder, img)).convert_alpha()
+            if isinstance(img, str):
+                self.image = pygame.image.load(path.join(self.base_images_folder, img)).convert_alpha()
+            if isinstance(img, Block):
+                self.image = img.image
         else:
             self.image = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
             self.image.fill((255, 255, 0))
@@ -51,7 +54,10 @@ class Button(Block):
         self.event = event
         self.key = key
         if img[1] is not None:
-            self.images[1] = pygame.image.load(os.path.join(self.base_images_folder, img[1])).convert_alpha()
+            if isinstance(img[1], str):
+                self.images[1] = pygame.image.load(path.join(self.base_images_folder, img[1])).convert_alpha()
+            if isinstance(img[1], Block):
+                self.images[1] = img[1].image
 
         if pos is not None:
             self.rect = self.image.get_rect(topleft=pos)

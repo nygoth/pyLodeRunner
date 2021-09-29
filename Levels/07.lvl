@@ -1,22 +1,22 @@
-P                       P                 |
-P                       P        ---------|
-P  X                X   P        H       H|
-ZZZZZZZZZHZZ    ZZHZZZZ P     X  H   +   H|
-         H        H     P  ZZZZZZHZZZZZZZZ|
-         H        H     P        H        |
-         H        H     P        H        |
-         H    +   H     P     X  H   U    |
-ZZZZZZZZZHZZZZZ   H     P        H   +    |
-         H        H     P        H   U    |
-         H        H     P        H        |
-         H        H     PPP      H        |
-     +   H    +   H              H        |
-ZZZZZHZZZZZZZZZZZZHZZZZZH        H        |
-     H                  H  +     H  ZZZZ H|
-     H                  H--------H  ZZZZ H|
-     H            U              H  Z+ Z H|
-ZZZZZZZZZZZZH     +              H  ZZZZZH|
-            H     U    U+U       H       H|
-            H                    H       H|
-        I   H                 +  H       H|
+P                       P        Z        |
+P                       P        T--------|
+P  X                X   P        \       H|
+ZZZZZZZZZHZZ    ZZHZZZZ P     X  /   +   H|
+         H        H     P  ZZZZZZ\ZZZZZZZZ|
+         H        H     P        /        |
+         H        H     P        \        |
+         H    +   H     P     X  /   U    |
+ZZZZZZZZZHZZZZZ   H     P        \   +    |
+         H        H     P        /   U    |
+         H        H     P        \        |
+         H        H     PPP      /        |
+     +   H    +   H              \        |
+ZZZZZHZZZZZZZZZZZZHZZZZZH        /        |
+     H                  H  +     \  ZZZZ H|
+     H                  H--------/  ZZZZ H|
+     H            U              \  Z+ Z H|
+ZZZZZZZZZZZZH     +              /  ZZZZZH|
+            H     U    U+U       \       H|
+            H                    /       H|
+        I   H                 +  J       H|
 ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ|

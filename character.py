@@ -61,12 +61,17 @@ I_MOTION = dict(zip(MOTION.values(), MOTION.keys()))
 
 SOLID_BLOCKS = ('Z', 'O')  # Непроницаемые блоки
 DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
-SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P')  # Блоки, на которых можно стоять не падая
-CARRY_BLOCKS = ('H', '-', 'P')  # Блоки, можно стоять на их фоне и не падать
+SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T')  # Блоки, на которых можно стоять не падая
+CARRY_BLOCKS = ('H', '-', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, можно стоять на их фоне и не падать
 HANG_BLOCKS = ('-',)  # Блоки, на которых можно висеть
-CLIMB_BLOCKS = ('H', 'P')  # Блоки, по которым можно лезть вверх и вниз
+CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, по которым можно лезть вверх и вниз
 VIRTUAL_BLOCKS = ('U',)  # Блоки, которые мираж
-MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS  # Блоки, хранящиеся в карте проверки
+TREASURE_BLOCKS = ('+',)  # Блоки-сокровища
+BEAST_BLOCKS = ('X',)  # Символы, помечающие монстров
+DEADLY_BLOCKS = ('*', '~')  # Смертельные блоки. Игрок и монстры умирают, находясь на них
+
+# Блоки, хранящиеся в карте проверки
+MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
 
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22

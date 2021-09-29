@@ -1,22 +1,22 @@
                  P      P                 |
                  P  X   P                 |
                  P      P                 |
-                 P      P                 |
-    +          HZP      PZH          +    |
-HZZZZZZZH------HZP      PZH------HZZZZZZZH|
-HZ     ZH      HZP      PZH      HZ     ZH|
-HZ     ZH       ZP      PZ       HZ     ZH|
-HZ     ZH       ZP      PZ       HZ     ZH|
-HZ  +  ZH       ZP      PZ       HZ  +  ZH|
-HZZZZZZZH       ZP      PZ       HZZZZZZZH|
-HZ  X  ZH       ZP      PZ       HZ  X  ZH|
-HZ     ZH       ZP      PZ       HZ     ZH|
-HZ     ZH       ZHZZZZZZHZ       HZ     ZH|
-HZ     ZH-------ZH      HZ-------HZ     ZH|
-HZ     Z       HZH      HZH       Z     ZH|
-HZ  +  Z       HZH   +  HZH       Z  +  ZH|
-HZZZUZZZ       HZOOOOOOOOZH       ZZZUZZZH|
-H      ZU      H          H      UZ      H|
-H       UU     H          H     UU       H|
-H        ZZX   H     I    H    ZZ        H|
+O                P      P                O|
+T   +          HZP      PZH          +   T|
+\ZZZZZZZH------HZP      PZH------HZZZZZZZ\|
+/Z     ZH      HZP      PZH      HZ     Z/|
+\Z     ZH       ZP      PZ       HZ     Z\|
+/Z     ZH       ZP      PZ       HZ     Z/|
+\Z  +  ZH       ZP      PZ       HZ  +  Z\|
+/ZZZZZZZH       ZP      PZ       HZZZZZZZ/|
+\Z  X  ZH       ZP      PZ       HZ  X  Z\|
+/Z     ZH       ZP      PZ       HZ     Z/|
+\Z     ZH       ZHZZZZZZHZ       HZ     Z\|
+/Z     ZH-------ZH      HZ-------HZ     Z/|
+\Z     Z       HZH      HZH       Z     Z\|
+/Z  +  Z       HZH   +  HZH       Z  +  Z/|
+\ZZZUZZZ       HZOOOOOOOOZH       ZZZUZZZ\|
+/      ZU      H          H      UZ      /|
+\       UU     H          H     UU       \|
+L        ZZX   H     I    H    ZZ        L|
 ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ|
