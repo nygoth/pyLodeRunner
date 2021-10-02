@@ -92,9 +92,9 @@ class Character(block.Block):
         self.move_state = STATE_STAND
         self.images = dict()
         self.delay = dict()
-        self.delay[K_IDLE * STATE_STAND] = idle_delay  # Idle and fall states are slower than moving states.
-        self.delay[K_IDLE * STATE_HANG] = idle_delay  # So they uses different counters
-        self.delay[K_IDLE * STATE_FALL] = fall_delay
+        self.delay[STATE_STAND] = idle_delay  # Idle and fall states are slower than moving states.
+        self.delay[STATE_HANG] = idle_delay  # So they uses different counters
+        self.delay[STATE_FALL] = fall_delay
         self.current_ticks = 0
 
         (self.step_sound, self.attack_sound, self.die_sound) = ((None, None, None), sounds)[sounds is not None]
@@ -209,7 +209,7 @@ class Character(block.Block):
             if isinstance(self.images[self.move_direction * self.move_state], list):
                 frames = len(self.images[self.move_direction * self.move_state])
                 if self.move_direction == K_IDLE:
-                    delay = self.delay[self.move_direction * self.move_state]
+                    delay = self.delay[self.move_state]
                     self.current_ticks = 0 if self.current_ticks >= delay - 1 else self.current_ticks + 1
                     current_frame = int(self.current_ticks / (delay / frames))
                 else:
