@@ -1,7 +1,7 @@
 # LodeRunner clone game
 # This project is for studying python programming
 
-# V 7.5
+# V 7.6
 # Полностью реализованная игра. Осталось немного вычистить код, и можно делать релиз.
 
 # В данном проекте есть один серьёзный недочёт дизайна -- сейчас при загрузке уровня
@@ -120,7 +120,9 @@ def load_level(filename):
 
                 if ch in character.BEAST_BLOCKS:
                     glBeasts.append(character.Beast(BEAST_FRAMES[ch], [row, col], subfolder=BEAST_FRAMES[ch]["folder"],
-                                                    sounds=(None, None, load_sound(BEAST_FRAMES[ch]["dieSound"]))))
+                                                    sounds=(None, None, load_sound(BEAST_FRAMES[ch]["dieSound"])),
+                                                    idle_delay=BEAST_FRAMES[ch]["idle_delay"],
+                                                    fall_delay=BEAST_FRAMES[ch]["fall_delay"]))
 
                 # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                 if ch == 'I':
@@ -328,7 +330,7 @@ ANIMATED_BLOCKS = {'+': ("Treasure",
                           "saw1.png",
                           "saw2.png",
                           ),
-                         (5, 20, 1), # задержка между кадрами анимации относительно FPS, больше - выше задержка
+                         (5, 20, 1),  # задержка между кадрами анимации относительно FPS, больше - выше задержка
                          0,  # пауза анимации. Можно указать и просто число
                          "saw.wav",
                          ),
@@ -401,7 +403,10 @@ ANIMATED_BLOCKS = {'+': ("Treasure",
                    }
 
 # Кадры анимации для спрайта игрока. Относительно каталога images\Player
-PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
+PLAYER_FRAMES = {"idle_delay": 250,
+                 "fall_delay": 100,
+                 "folder": "Player",
+                 "idle": ("character_maleAdventurer_idle.png",),
                  "fall": ("character_maleAdventurer_fall0.png",
                           "character_maleAdventurer_fall1.png"),
                  "hang": ("character_maleAdventurer_hang_idle.png",),
@@ -437,18 +442,26 @@ PLAYER_FRAMES = {"idle": ("character_maleAdventurer_idle.png",),
 # Кадры для анимации монстров. Относительно каталога images\Beast
 BEAST_FRAMES = {'X': {"folder": "Beast",
                       "dieSound": "beast die.wav",
-                      "idle": ("character_zombie_idle.png",),
-                      "fall": ("character_zombie_fall0.png",
-                               "character_zombie_fall1.png",),
+                      "idle_delay": 250,
+                      "fall_delay": 100,
+                      "idle": ("zombie_idle0.png",
+                               "zombie_idle1.png",
+                               "zombie_idle0.png",
+                               "zombie_idle2.png",
+                               ),
+                      "fall": ("zombie_fall0.png",
+                               "zombie_fall1.png",
+                               "zombie_fall2.png",
+                               "zombie_fall1.png",),
                       "hang": ("character_zombie_hang_idle.png",),
-                      "walk_right": ("character_zombie_walk0.png",
-                                     "character_zombie_walk1.png",
-                                     "character_zombie_walk2.png",
-                                     "character_zombie_walk3.png",
-                                     "character_zombie_walk4.png",
-                                     "character_zombie_walk5.png",
-                                     "character_zombie_walk6.png",
-                                     "character_zombie_walk7.png"),
+                      "walk_right": ("zombie_walk0.png",
+                                     "zombie_walk1.png",
+                                     "zombie_walk2.png",
+                                     "zombie_walk3.png",
+                                     "zombie_walk4.png",
+                                     "zombie_walk5.png",
+                                     "zombie_walk6.png",
+                                     "zombie_walk7.png",),
                       "walk_hang_right": ("character_zombie_hang0.png",
                                           "character_zombie_hang1.png",
                                           "character_zombie_hang2.png",
@@ -456,14 +469,14 @@ BEAST_FRAMES = {'X': {"folder": "Beast",
                                           "character_zombie_hang4.png",
                                           "character_zombie_hang5.png",
                                           ),
-                      "climb_up": ("character_zombie_climb0.png",
-                                   "character_zombie_climb1.png",
-                                   "character_zombie_climb2.png",
-                                   "character_zombie_climb3.png",
-                                   "character_zombie_climb4.png",
-                                   "character_zombie_climb5.png",
-                                   "character_zombie_climb6.png",
-                                   "character_zombie_climb7.png",)
+                      "climb_up": ("zombie_climb0.png",
+                                   "zombie_climb1.png",
+                                   "zombie_climb2.png",
+                                   "zombie_climb3.png",
+                                   "zombie_climb4.png",
+                                   "zombie_climb5.png",
+                                   "zombie_climb6.png",
+                                   "zombie_climb7.png",)
                       },
                 }
 
@@ -572,13 +585,15 @@ STATIC_BLOCKS = dict()
 for ch in STATIC_BLOCKS_FILES:
     STATIC_BLOCKS[ch] = block.Block(STATIC_BLOCKS_FILES[ch])
 
-glPlayer = character.Player(PLAYER_FRAMES, subfolder="Player",
+glPlayer = character.Player(PLAYER_FRAMES, subfolder=PLAYER_FRAMES["folder"],
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
                                     {GAME_OVER_EATEN: load_sound("eaten.wav"),
                                      GAME_OVER_KILLED: load_sound("beast die.wav"),
                                      GAME_OVER_STUCK: load_sound("beast die.wav"),
                                      GAME_OVER_USER_END: load_sound("user end.wav"),
-                                     }))
+                                     }),
+                            idle_delay=PLAYER_FRAMES["idle_delay"],
+                            fall_delay=PLAYER_FRAMES["fall_delay"])
 
 levelEnd_sound = load_sound("level end.wav")
 exitAppears_sound = load_sound("exit.wav")

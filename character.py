@@ -85,12 +85,16 @@ class Character(block.Block):
         А также -- проверка столкновений
     """
 
-    def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
+    def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
         self.pos = [0, 0] if position is None else position
         self.oldpos = self.pos
         self.move_direction = K_IDLE
         self.move_state = STATE_STAND
         self.images = dict()
+        self.delay = dict()
+        self.delay[K_IDLE * STATE_STAND] = idle_delay  # Idle and fall states are slower than moving states.
+        self.delay[K_IDLE * STATE_FALL] = fall_delay  # So they uses different counters
+        self.current_ticks = 0
 
         (self.step_sound, self.attack_sound, self.die_sound) = ((None, None, None), sounds)[sounds is not None]
 
@@ -203,7 +207,13 @@ class Character(block.Block):
         if self.move_direction * self.move_state in self.images:
             if isinstance(self.images[self.move_direction * self.move_state], list):
                 frames = len(self.images[self.move_direction * self.move_state])
-                current_frame = int(tick / (step / frames))
+                if self.move_state in (STATE_STAND, STATE_FALL) and self.move_direction == K_IDLE:
+                    delay = self.delay[self.move_direction * self.move_state]
+                    self.current_ticks = 0 if self.current_ticks >= delay - 1 else self.current_ticks + 1
+                    current_frame = int(self.current_ticks / (delay / frames))
+                else:
+                    self.current_ticks = 0
+                    current_frame = int(tick / (step / frames))
 
                 return self.images[self.move_direction * self.move_state][current_frame].image
             else:
@@ -218,8 +228,8 @@ class Beast(Character):
         В общем случае, он стремится по кратчайшей траектории подойти к игроку.
     """
 
-    def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
-        super(Beast, self).__init__(img, position, subfolder, sounds)
+    def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
+        super(Beast, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay)
         # Запоминаем позицию рождения для возрождения чудовища в исходном месте при его смерти
         self.spawn_pos = self.pos.copy()
         self.idioticy = 0
@@ -278,8 +288,8 @@ class Player(Character):
         Здесь происходит проверка клавиатурного ввода и передача команд на движение.
     """
 
-    def __init__(self, img, position=None, subfolder="", sounds: tuple = None):
-        super(Player, self).__init__(img, position, subfolder, sounds)
+    def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
+        super(Player, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay)
         self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES,
                                                   subfolder="Animation", animation_delay=CRACKED_BLOCK_LIFETIME / 100,
                                                   animation_pause=CRACKED_BLOCK_LIFETIME)
