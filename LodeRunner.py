@@ -398,7 +398,7 @@ ANIMATED_BLOCKS = {'+': ("Treasure",
                           ),
                          (15, 30, 1),
                          (1, 20, 1),
-                         None,
+                         "burned.wav",
                          ),
                    }
 
@@ -782,14 +782,11 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                     running = False
                     game_over_reason = GAME_OVER_EATEN
                 else:
-                    if glCurrentLevel[0][beast.pos[0]][beast.pos[1]] in character.DEADLY_BLOCKS:
-                        key = str(beast.pos[0]) + ":" + str(beast.pos[1]) + ":" + \
-                              glCurrentLevel[0][beast.pos[0]][beast.pos[1]]
-                        if glAnimatedEntities[key].hit_sound is not None:
-                            glAnimatedEntities[key].hit_sound.play()
                     if glCurrentLevel[0][beast.oldpos[0]][beast.oldpos[1]] in character.DEADLY_BLOCKS:
                         key = str(beast.oldpos[0]) + ":" + str(beast.oldpos[1]) + ":" + \
                               glCurrentLevel[0][beast.oldpos[0]][beast.oldpos[1]]
+                        if glAnimatedEntities[key].hit_sound is not None:
+                            glAnimatedEntities[key].hit_sound.play()
                         die_beast(beast)
             glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
                               get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))

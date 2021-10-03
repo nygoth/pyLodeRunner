@@ -39,10 +39,10 @@ Legend:
 '+' - Treasure
 'X' - Beast start location. Can be many of them
 'I' - Player start location. Using only last one found
-'*' - Floor circular saw. Deadly
 'T' - Rope base. Assume, it placed below brick or solid block
 '\' - Right bended rope body
 '/' - Left bended rope body
 'J' - Left bended rope tail
 'L' - Right bended rope tail
+'*' - Floor circular saw. Deadly
 '~' - Lava block. Deadly
