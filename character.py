@@ -57,9 +57,9 @@ ANTIMOTION = {K_LEFT: K_RIGHT,
 # Обратный словарь к MOTION. Нужен для поиска команды по известному шагу
 I_MOTION = dict(zip(MOTION.values(), MOTION.keys()))
 
-SOLID_BLOCKS = ('Z', 'O')  # Непроницаемые блоки
+SOLID_BLOCKS = ('Z', 'O', '=')  # Непроницаемые блоки
 DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
-SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T')  # Блоки, на которых можно стоять не падая
+SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')  # Блоки, на которых можно стоять не падая
 CARRY_BLOCKS = ('H', '-', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, можно стоять на их фоне и не падать
 HANG_BLOCKS = ('-',)  # Блоки, на которых можно висеть
 CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, по которым можно лезть вверх и вниз
@@ -113,7 +113,7 @@ class Character(block.Block):
             self.__clone_animation__(STATES["walk_left"], STATES["walk_right"], True)
 
             # Let's duplicate climbing animations if absent
-            self.__clone_animation__(STATES["climb_down"], STATES["climb_up"])
+            self.__clone_animation__(STATES["climb_down"], STATES["climb_up"], reverse=True)
 
             # Несколько переходных форм
             self.__clone_animation__(STATES["walk_hang_right"], STATES["walk_hang_left"], True)
@@ -134,14 +134,14 @@ class Character(block.Block):
             if attack_list[1] not in self.images:
                 self.images[attack_list[1]] = self.images[attack_list[0]].copy(xflip=True)
 
-    def __clone_animation__(self, state1, state2, flip=False):
+    def __clone_animation__(self, state1, state2, flip=False, reverse=False):
         f = state1
         z = state2
         for i in range(2):
             if f not in self.images and z in self.images:
                 if isinstance(self.images[z], list):
                     self.images[f] = list()
-                    for pict in self.images[z]:
+                    for pict in reversed(self.images[z]) if reverse else self.images[z]:
                         self.images[f].append(pict.copy(xflip=flip))
                 break
             f = state2

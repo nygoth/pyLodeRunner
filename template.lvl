@@ -32,6 +32,7 @@ Legend:
 
 'Z' - Brick static block. Destructable
 'O' - Solid block. Indestructable
+'=' - Steel platform. Indestructable
 'U' - Virtual brick block. Can fall thru
 'H' - Ladder
 'P' - Exit ladder. Appears when all treasures collected
