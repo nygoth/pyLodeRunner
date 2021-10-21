@@ -94,7 +94,7 @@ def load_level(filename):
             # Цикл по отдельным символам строки. Добавляем один символ, чтобы не писать в коде лишних проверок
             # на выход за границы массива
             for ch in line[0:LEVEL_WIDTH + 1]:
-                if ch == 'P':
+                if ch in character.EXIT_BLOCKS:
                     exit_line.append(ch)
                     ch = '.'
                 else:
@@ -303,6 +303,7 @@ STATIC_BLOCKS_FILES = {'Z': "block.png",
                        'H': "ladder.png",
                        'O': "solid.png",
                        '-': "bar.png",
+                       '_': "exit_bar.png",
                        'P': "exit_ladder.png",
                        'U': "block.png",
                        '=': "platform.png",
@@ -330,6 +331,15 @@ ANIMATED_BLOCKS = {'+': ("Treasure",
                          ("saw0.png",
                           "saw1.png",
                           "saw2.png",
+                          ),
+                         (5, 20, 1),  # задержка между кадрами анимации относительно FPS, больше - выше задержка
+                         0,  # пауза анимации. Можно указать и просто число
+                         "saw.wav",
+                         ),
+                   '0': ("Animation",
+                         ("fullsaw0.png",
+                          "fullsaw1.png",
+                          "fullsaw2.png",
                           ),
                          (5, 20, 1),  # задержка между кадрами анимации относительно FPS, больше - выше задержка
                          0,  # пауза анимации. Можно указать и просто число
@@ -553,6 +563,8 @@ if path.exists(SETTINGS_FILE):
         config.get("Structure", "VIRTUAL BLOCKS", fallback=json.dumps(character.VIRTUAL_BLOCKS)).replace("'", "\""))
     character.TREASURE_BLOCKS = json.loads(
         config.get("Structure", "TREASURE BLOCKS", fallback=json.dumps(character.TREASURE_BLOCKS)).replace("'", "\""))
+    character.EXIT_BLOCKS = json.loads(
+        config.get("Structure", "EXIT BLOCKS", fallback=json.dumps(character.EXIT_BLOCKS)).replace("'", "\""))
     character.BEAST_BLOCKS = json.loads(
         config.get("Structure", "BEAST BLOCKS", fallback=json.dumps(character.BEAST_BLOCKS)).replace("'", "\""))
     character.DEADLY_BLOCKS = json.loads(
@@ -585,6 +597,7 @@ else:
     config["Structure"]["CLIMB BLOCKS"] = json.dumps(character.CLIMB_BLOCKS)
     config["Structure"]["VIRTUAL BLOCKS"] = json.dumps(character.VIRTUAL_BLOCKS)
     config["Structure"]["TREASURE BLOCKS"] = json.dumps(character.TREASURE_BLOCKS)
+    config["Structure"]["EXIT BLOCKS"] = json.dumps(character.EXIT_BLOCKS)
     config["Structure"]["BEAST BLOCKS"] = json.dumps(character.BEAST_BLOCKS)
     config["Structure"]["DEADLY BLOCKS"] = json.dumps(character.DEADLY_BLOCKS)
 

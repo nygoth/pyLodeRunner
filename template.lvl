@@ -36,6 +36,7 @@ Legend:
 'U' - Virtual brick block. Can fall thru
 'H' - Ladder
 'P' - Exit ladder. Appears when all treasures collected
+'_' - Exit horizontal bar. Appears when all treasures collected
 '-' - Horizontal bar. Hangable
 '+' - Treasure
 'X' - Beast start location. Can be many of them
@@ -46,4 +47,5 @@ Legend:
 'J' - Left bended rope tail
 'L' - Right bended rope tail
 '*' - Floor circular saw. Deadly
+'0' - Aerial circulae saw. Deadly
 '~' - Lava block. Deadly
