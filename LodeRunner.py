@@ -301,7 +301,7 @@ current_song = -1
 # Спрайты статичных блоков структуры уровня
 STATIC_BLOCKS_FILES = {'Z': "block.png",
                        'H': "ladder.png",
-                       'O': "solid.png",
+                       'O': "concrete_solid.png",
                        '-': "bar.png",
                        '_': "exit_bar.png",
                        'P': "exit_ladder.png",
