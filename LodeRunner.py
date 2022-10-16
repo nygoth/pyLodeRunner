@@ -1,28 +1,37 @@
 # LodeRunner clone game
 # This project is for studying python programming
-
 # V 7.6
 # Полностью реализованная игра. Осталось немного вычистить код, и можно делать релиз.
 
 # В данном проекте есть один серьёзный недочёт дизайна -- сейчас при загрузке уровня
-# все анимированные спрайты создаются и загружаются заново. На каждый новый уровень. Причём. на каждый блок своя копия.
+# все анимированные спрайты создаются и загружаются заново. На каждый новый уровень. Причём, на каждый блок своя копия.
 # Это неоптимально. Картинки анимации, например, достаточно загрузить один раз за всю игру
 # по одному экземпляру на каждый тип анимированного спрайта.
-# Для этого можно ввсти промежуточный класс между Block и всеми наследниками -- что-то типа ImageArray
+# Для этого можно ввести промежуточный класс между Block и всеми наследниками -- что-то типа ImageArray
 # Или перед Block, а последний сделать вырожденным случаем.
+
+# Замечание на релиз 8.0. Для улучшения вовлечённости, нужно добавить подсчёт очков за уровень и, возможно, ввести
+# опционально количество жизней. Очки считать очень просто -- обратное от времени, прошедшего между подборами сокровищ.
+# Смысл в том, что чем быстрее собираются сокровища (и достигается выход), тем больше очков за уровень получаешь.
+# Можно вести таблицу рекордов в сети.
+
+# Кроме того, необходим некоторый редизайн кода -- нужно добавить класс level, который будет обслуживать все операции
+# с уровнем -- загрузку, отрисовку, контроль столкновений, звуки и т.п.
+# И тогда параметры LEVEL_WIDTH и LEVEL_HEIGHT перейдут туда
 
 
 from os import path, walk
 import random
 import sys
 import json
+import ctypes
 
+import configparser
 import pygame
 from pygame.locals import *
 
 import block
 import character
-import configparser
 
 # Объявление глобальных констант и переменных
 SETTINGS_FILE = path.join(path.dirname(__file__), "settings.ini")
@@ -54,12 +63,12 @@ def load_sound(filename):
 def get_screen_pos(pos: list, step=0.0, oldpos: list = None, tick=0):
     """Переводит старые и новые координаты в знакоместах в экранные координаты относительно текущего игрового тика"""
     if oldpos is None:
-        return pos[1] * BLOCK_WIDTH, pos[0] * BLOCK_WIDTH
+        return pos[1] * block.BLOCK_WIDTH, pos[0] * block.BLOCK_WIDTH
 
     disp = step * tick
     disp_x = (pos[1] - oldpos[1]) * disp
     disp_y = (pos[0] - oldpos[0]) * disp
-    return oldpos[1] * BLOCK_WIDTH + disp_x, oldpos[0] * BLOCK_WIDTH + disp_y
+    return oldpos[1] * block.BLOCK_WIDTH + disp_x, oldpos[0] * block.BLOCK_WIDTH + disp_y
 
 
 def init_screen(width, height):
@@ -154,7 +163,7 @@ def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
             curBlock = sprites.get(block)
 
             if curBlock is not None:
-                canvas.blit(curBlock.image, curBlock.image.get_rect(topleft=(x * BLOCK_WIDTH, y * BLOCK_WIDTH)))
+                canvas.blit(curBlock.image, curBlock.image.get_rect(topleft=(x * block.BLOCK_WIDTH, y * block.BLOCK_WIDTH)))
             x += 1
         y += 1
 
@@ -191,7 +200,7 @@ def die_beast(beast):
     beast.pos[1] = beast.oldpos[1] = beast.spawn_pos[1]
 
 
-def respawn_beasts(block: block.Block):
+def respawn_beasts(block: block):
     """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
     if glPlayer.pos[0] == block.pos[0] and glPlayer.pos[1] == block.pos[1]:
         return False
@@ -211,26 +220,26 @@ def game_over(reason: int):
         if glPlayer.die_sound is not None:
             glPlayer.die_sound[reason].play()
         glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(
-            center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
+            center=(LEVEL_WIDTH * block.BLOCK_WIDTH / 2, LEVEL_HEIGHT * block.BLOCK_WIDTH / 2)))
 
         btRestart.rect = btRestart.image.get_rect(
-            topleft=(LEVEL_WIDTH * BLOCK_WIDTH / 2 - btRestart.rect.width - BLOCK_WIDTH,
-                     LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
+            topleft=(LEVEL_WIDTH * block.BLOCK_WIDTH / 2 - btRestart.rect.width - block.BLOCK_WIDTH,
+                     LEVEL_HEIGHT * block.BLOCK_WIDTH / 2 + block.BLOCK_WIDTH * 2))
         glMainCanvas.blit(btRestart.get_image(), btRestart.rect)
 
         buttons.append(btRestart)
     else:  # Если переход на следующий уровень, то а) нужный звук и б) кнопка "Next level"
         levelEnd_sound.play()
         glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(
-            center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
+            center=(LEVEL_WIDTH * block.BLOCK_WIDTH / 2, LEVEL_HEIGHT * block.BLOCK_WIDTH / 2)))
         btNext.rect = btNext.image.get_rect(
-            topleft=(LEVEL_WIDTH * BLOCK_WIDTH / 2 - btNext.rect.width - BLOCK_WIDTH,
-                     LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
+            topleft=(LEVEL_WIDTH * block.BLOCK_WIDTH / 2 - btNext.rect.width - block.BLOCK_WIDTH,
+                     LEVEL_HEIGHT * block.BLOCK_WIDTH / 2 + block.BLOCK_WIDTH * 2))
         glMainCanvas.blit(btNext.get_image(), btNext.rect)
         buttons.append(btNext)
 
-    btQuit.rect = btQuit.image.get_rect(topleft=(LEVEL_WIDTH * BLOCK_WIDTH / 2 + BLOCK_WIDTH,
-                                                 LEVEL_HEIGHT * BLOCK_WIDTH / 2 + BLOCK_WIDTH * 2))
+    btQuit.rect = btQuit.image.get_rect(topleft=(LEVEL_WIDTH * block.BLOCK_WIDTH / 2 + block.BLOCK_WIDTH,
+                                                 LEVEL_HEIGHT * block.BLOCK_WIDTH / 2 + block.BLOCK_WIDTH * 2))
     glMainCanvas.blit(btQuit.get_image(), btQuit.rect)
     pygame.display.update()
 
@@ -510,7 +519,7 @@ BEAST_FRAMES = {'X': {"folder": "Beast",
                 }
 
 # Размеры спрайтов и уровня в целом
-BLOCK_WIDTH = 38
+# block.BLOCK_WIDTH = block.BLOCK_WIDTH
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22
 
@@ -538,7 +547,7 @@ if path.exists(SETTINGS_FILE):
     BEAST_FRAMES = json.loads(
         config.get("Characters", "BEAST FRAMES", fallback=json.dumps(BEAST_FRAMES)).replace("'", "\""))
 
-    BLOCK_WIDTH = int(config.get("Geometry", "BLOCK WIDTH", fallback=BLOCK_WIDTH))
+    block.BLOCK_WIDTH = int(config.get("Geometry", "BLOCK WIDTH", fallback=block.BLOCK_WIDTH))
     LEVEL_WIDTH = int(config.get("Geometry", "LEVEL WIDTH", fallback=LEVEL_WIDTH))
     LEVEL_HEIGHT = int(config.get("Geometry", "LEVEL HEIGHT", fallback=LEVEL_HEIGHT))
 
@@ -582,7 +591,7 @@ else:
     config["Game"]["STEP"] = str(STEP)
     config["Game"]["TEMPO"] = str(TEMPO)
     config["Game"]["BEAST TEMPO"] = str(BEAST_TEMPO)
-    config["Geometry"]["BLOCK WIDTH"] = str(BLOCK_WIDTH)
+    config["Geometry"]["BLOCK WIDTH"] = str(block.BLOCK_WIDTH)
     config["Geometry"]["LEVEL WIDTH"] = str(LEVEL_WIDTH)
     config["Geometry"]["LEVEL HEIGHT"] = str(LEVEL_HEIGHT)
     config["Blocks"]["STATIC BLOCKS FILES"] = json.dumps(STATIC_BLOCKS_FILES)
@@ -603,19 +612,21 @@ else:
 
 FPS = TEMPO * STEP
 BEAST_STEP = int(FPS / BEAST_TEMPO)
-BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
-PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
+BEAST_ANIMATION_STEP = block.BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
+PLAYER_ANIMATION_STEP = block.BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
 
-block.BLOCK_WIDTH = BLOCK_WIDTH
+# block.BLOCK_WIDTH = block.BLOCK_WIDTH
 character.LEVEL_WIDTH = LEVEL_WIDTH
 character.LEVEL_HEIGHT = LEVEL_HEIGHT
 character.CRACKED_BLOCK_LIFETIME = int(FPS * 2.2)
 
+# This makes game screen unsensitive to Windosw10 scale setting in screen preferences
+ctypes.windll.user32.SetProcessDPIAware()
 glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
 
 STATIC_BLOCKS = dict()
 for ch in STATIC_BLOCKS_FILES:
-    STATIC_BLOCKS[ch] = block.Block(STATIC_BLOCKS_FILES[ch])
+    STATIC_BLOCKS[ch] = block(STATIC_BLOCKS_FILES[ch])
 
 glPlayer = character.Player(PLAYER_FRAMES, subfolder=PLAYER_FRAMES["folder"],
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
@@ -630,9 +641,9 @@ glPlayer = character.Player(PLAYER_FRAMES, subfolder=PLAYER_FRAMES["folder"],
 levelEnd_sound = load_sound("level end.wav")
 exitAppears_sound = load_sound("exit.wav")
 
-FailTitle = block.Block("Game over title.jpg", "Titles")
-WinTitle = block.Block("Win title.jpg", "Titles")
-IntroTitle = block.Block("Intro title.jpg", "Titles")
+FailTitle = block("Game over title.jpg", "Titles")
+WinTitle = block("Win title.jpg", "Titles")
+IntroTitle = block("Intro title.jpg", "Titles")
 
 btRestart = block.Button(("Restart.jpg", "Restart pressed.jpg"), "Buttons", event=ACTION_RESTART,
                          key=(K_RETURN, K_KP_ENTER, K_SPACE))
@@ -648,7 +659,7 @@ whatNext = ACTION_NEXT
 #
 
 glMainCanvas.blit(IntroTitle.image,
-                  IntroTitle.image.get_rect(center=(LEVEL_WIDTH * BLOCK_WIDTH / 2, LEVEL_HEIGHT * BLOCK_WIDTH / 2)))
+                  IntroTitle.image.get_rect(center=(LEVEL_WIDTH * block.BLOCK_WIDTH / 2, LEVEL_HEIGHT * block.BLOCK_WIDTH / 2)))
 pygame.display.update()
 
 pygame.mixer.music.load(path.join(path.dirname(__file__), "Sounds", "INTRO.mp3"))
