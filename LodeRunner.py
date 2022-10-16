@@ -158,9 +158,9 @@ def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
 
     for row in level:
         x = 0
-        for block in row:
+        for blk in row:
             # Используем метод get. Он не выдаёт ошибок, если индекс отсутствует, а возвращает None, что удобнее
-            curBlock = sprites.get(block)
+            curBlock = sprites.get(blk)
 
             if curBlock is not None:
                 canvas.blit(curBlock.image, curBlock.image.get_rect(topleft=(x * block.BLOCK_WIDTH, y * block.BLOCK_WIDTH)))
@@ -620,13 +620,13 @@ character.LEVEL_WIDTH = LEVEL_WIDTH
 character.LEVEL_HEIGHT = LEVEL_HEIGHT
 character.CRACKED_BLOCK_LIFETIME = int(FPS * 2.2)
 
-# This makes game screen unsensitive to Windosw10 scale setting in screen preferences
+# This makes game screen insensitive to Windows 10 scale setting in screen preferences
 ctypes.windll.user32.SetProcessDPIAware()
 glMainCanvas = init_screen(block.BLOCK_WIDTH * LEVEL_WIDTH, block.BLOCK_WIDTH * LEVEL_HEIGHT)
 
 STATIC_BLOCKS = dict()
 for ch in STATIC_BLOCKS_FILES:
-    STATIC_BLOCKS[ch] = block(STATIC_BLOCKS_FILES[ch])
+    STATIC_BLOCKS[ch] = block.Block(STATIC_BLOCKS_FILES[ch])
 
 glPlayer = character.Player(PLAYER_FRAMES, subfolder=PLAYER_FRAMES["folder"],
                             sounds=(load_sound("footsteps.wav"), load_sound("attack.wav"),
@@ -641,9 +641,9 @@ glPlayer = character.Player(PLAYER_FRAMES, subfolder=PLAYER_FRAMES["folder"],
 levelEnd_sound = load_sound("level end.wav")
 exitAppears_sound = load_sound("exit.wav")
 
-FailTitle = block("Game over title.jpg", "Titles")
-WinTitle = block("Win title.jpg", "Titles")
-IntroTitle = block("Intro title.jpg", "Titles")
+FailTitle = block.Block("Game over title.jpg", "Titles")
+WinTitle = block.Block("Win title.jpg", "Titles")
+IntroTitle = block.Block("Intro title.jpg", "Titles")
 
 btRestart = block.Button(("Restart.jpg", "Restart pressed.jpg"), "Buttons", event=ACTION_RESTART,
                          key=(K_RETURN, K_KP_ENTER, K_SPACE))

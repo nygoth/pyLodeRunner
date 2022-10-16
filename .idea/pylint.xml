@@ -2,5 +2,7 @@
 <project version="4">
   <component name="PylintConfigService">
     <option name="customPylintPath" value="D:\Users\nygoth\AppData\Local\Programs\Python\Python38\Scripts\pylint.exe" />
+    <option name="pylintArguments" value="--ignore-patterns=venv" />
+    <option name="pylintrcPath" value=".pylintrc" />
   </component>
 </project>

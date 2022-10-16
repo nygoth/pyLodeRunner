@@ -151,7 +151,8 @@ class Character(block.Block):
     def __set_state__(self):
         self.move_state = STATE_HANG if glCurrentLevel[0][self.pos[0]][self.pos[1]] in HANG_BLOCKS else STATE_STAND
 
-    def __in_obstacle__(self, obstacles: list, pos: tuple):
+    @staticmethod
+    def __in_obstacle__(obstacles: list, pos: tuple):
         if obstacles is not None:
             for obst in obstacles:
                 if pos[0] == obst.pos[0] and pos[1] == obst.pos[1]:
