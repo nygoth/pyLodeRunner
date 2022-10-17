@@ -78,6 +78,19 @@ class Button(Block):
     def get_image(self):
         return self.images[self.pressed_state]
 
+    def show(self, canvas, state=None):
+        """Рисует кнопку в соответствующем состоянии"""
+        if state is None:
+            state = self.pressed_state
+
+        self.pressed_state = state
+        if state:
+            canvas.blit(self.get_image(), self.rect)
+            return None
+        else:
+            canvas.blit(self.get_image(), self.rect)
+            return self.event
+
 
 class AnimatedBlock(Block):
     """Анимированный спрайт уровня. Неподвижный"""
@@ -181,7 +194,7 @@ class TemporaryBlock(AnimatedBlock):
             action = self.in_action
             img = super().get_image(tick)
 
-            # Поведение по завершению анимации отличается
+            # Поведение по завершению анимации отличается.
             # Как только заканчивается стартовая анимация, мы показываем ПОСЛЕДНИЙ её кадр, а не первый.
             if action and not self.in_action:
                 if self.on_start:

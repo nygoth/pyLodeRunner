@@ -285,6 +285,12 @@ class Beast(Character):
                     self.move_direction = K_IDLE
         return True
 
+    def die(self):
+        if self.die_sound is not None:
+            self.die_sound.play()
+        self.pos[0] = self.oldpos[0] = self.spawn_pos[0]
+        self.pos[1] = self.oldpos[1] = self.spawn_pos[1]
+
 
 class Player(Character):
     """Персонаж, контролируемый игроком.
