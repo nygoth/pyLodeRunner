@@ -212,7 +212,7 @@ def game_over(reason: int):
     screen_halfwidth = LEVEL_WIDTH * BLOCK_WIDTH / 2
     screen_halfheight = LEVEL_HEIGHT * BLOCK_WIDTH / 2
 
-    # Если игрок уровень проиграл, то нужно проиграть соответствующий звук
+    # Если игрок уровень проиграл, то нужно воспроизвести соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
     if reason != GAME_OVER_COMPLETE:
         if glPlayer.die_sound is not None:
@@ -224,8 +224,8 @@ def game_over(reason: int):
             topleft=(screen_halfwidth - btRestart.rect.width - BLOCK_WIDTH,
                      screen_halfheight + BLOCK_WIDTH * 2))
         btRestart.show(glMainCanvas)
-
         buttons.append(btRestart)
+
     else:  # Если переход на следующий уровень, то а) нужный звук и б) кнопка "Next level"
         levelEnd_sound.play()
         glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(
@@ -252,27 +252,17 @@ def game_over(reason: int):
                 break
 
             # Для мышки нужно реагировать только на левую кнопку (хранится в exit_event.button)
-            if exit_event.type == MOUSEBUTTONDOWN and exit_event.button == 1:
+            if exit_event.type in (MOUSEBUTTONDOWN, MOUSEBUTTONUP) and exit_event.button == 1:
                 for button in buttons:
                     if button.rect.collidepoint(exit_event.pos):
-                        button.show(glMainCanvas, True)
+                        res = button.show(glMainCanvas, exit_event.type == MOUSEBUTTONDOWN)
+                        wait_state = (exit_event.type == MOUSEBUTTONDOWN)
 
-            if exit_event.type == MOUSEBUTTONUP and exit_event.button == 1:
-                for button in buttons:
-                    if button.rect.collidepoint(exit_event.pos):
-                        res = button.show(glMainCanvas, False)
-                        wait_state = False
-
-            if exit_event.type == KEYDOWN:
+            if exit_event.type in (KEYDOWN, KEYUP):
                 for button in buttons:
                     if exit_event.key in button.key:
-                        button.show(glMainCanvas, True)
-
-            if exit_event.type == KEYUP:
-                for button in buttons:
-                    if exit_event.key in button.key:
-                        res = button.show(glMainCanvas, False)
-                        wait_state = False
+                        res = button.show(glMainCanvas, exit_event.type == KEYDOWN)
+                        wait_state = (exit_event.type == KEYDOWN)
 
         pygame.display.update()
     return res
@@ -288,10 +278,7 @@ def game_over(reason: int):
 config = configparser.ConfigParser()
 game_state = configparser.ConfigParser()
 
-current_level = -1
-current_song = -1
-
-(current_level, current_song) = init_config(game_state, config, (current_level, current_song))
+current_level, current_song = init_config(game_state, config)
 
 FPS = TEMPO * STEP
 BEAST_STEP = int(FPS / BEAST_TEMPO)
@@ -349,15 +336,14 @@ pygame.mixer.music.load(path.join(path.dirname(__file__), "Sounds", "INTRO.mp3")
 pygame.mixer.music.set_volume(0.3)
 pygame.mixer.music.play(-1)
 
-# Wait user input to startup our game
+# Wait user input to start up our game
 running = True
 while running:
     for event in pygame.event.get():
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
-        if event.type == KEYUP or event.type == MOUSEBUTTONUP:
-            running = False
+        running = not (event.type in (KEYUP, MOUSEBUTTONUP))
 
 pygame.mixer.music.stop()
 
@@ -399,13 +385,13 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     glTreasuresCount = 0
 
     if whatNext == ACTION_NEXT:
-        current_level = current_level + 1 if current_level < len(levels_list) - 1 else 0
+        current_level = (0, current_level + 1)[current_level < len(levels_list) - 1]
     whatNext = ACTION_RESTART
 
     # Сразу нужно сохранить прогресс. Мало ли, выключится свет, слетит игра -- игрок должен вернуться именно на тот
     # уровень, до которого дошёл
-    game_state["Progress"]["current level"] = str(current_level)
-    game_state["Progress"]["current song"] = str(current_song)
+    game_state["Progress"]["current level"], game_state["Progress"]["current song"] = \
+        str(current_level), str(current_song)
     with open(GAME_STATE_FILE, "w") as config_file:
         game_state.write(config_file)
 
@@ -419,6 +405,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     # Pause 1,5 sec for user to look around new level
     # Beasts, treasures and player are blinking at this time
     #
+    # TODO Перенести всю графику в класс Block. Туда же get_screen_pos и прочее. Чтобы этот кусок кода, по сути
+    # TODO был просто вызовом show для соответствующего объекта
     for i in range(8):
         glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
         for animBlock in glAnimatedEntities.values():
@@ -433,8 +421,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         glClock.tick(8)
 
     running = True
-    player_tick = 0
-    beast_tick = 0
+    player_tick = beast_tick = 0
 
     # =================================================================================================
     # Game lifecycle
@@ -482,6 +469,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
             glMainCanvas.blit(tempBlock.get_image(player_tick), get_screen_pos(tempBlock.pos))
             if tempBlock.died:
                 if tempBlock.underlay is not None:
+                    # TODO Check, whether we can move block_killing_action to TemporaryBlock class
                     if not block_killing_action(tempBlock):
                         game_over_reason = GAME_OVER_STUCK
                         running = False
@@ -525,8 +513,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
             running = False
             game_over_reason = GAME_OVER_KILLED
 
-        player_tick = player_tick + 1 if player_tick < STEP - 1 else 0
-        beast_tick = beast_tick + 1 if beast_tick < BEAST_STEP - 1 else 0
+        player_tick = (0, player_tick + 1)[player_tick < STEP - 1]
+        beast_tick = (0, beast_tick + 1)[beast_tick < BEAST_STEP - 1]
 
         pygame.display.update()
         glClock.tick(FPS)
@@ -534,8 +522,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     pygame.mixer.music.fadeout(500)
     whatNext = game_over(game_over_reason)
 
-game_state["Progress"]["current level"] = str(current_level)
-game_state["Progress"]["current song"] = str(current_song)
+game_state["Progress"]["current level"], game_state["Progress"]["current song"] = \
+    str(current_level), str(current_song)
 with open(GAME_STATE_FILE, "w") as config_file:
     game_state.write(config_file)
 

@@ -7,6 +7,7 @@ import random
 import pygame
 from pygame.locals import *
 import block
+from game_structure import *
 
 K_IDLE = 1
 STATE_FALL = 10
@@ -25,23 +26,6 @@ STATES = {"idle": STATE_STAND * K_IDLE,
           "walk_hang_left": STATE_HANG * K_LEFT,
           }
 
-CRACKED_BLOCK_IMAGES = (("cracked_block0.png",
-                         "cracked_block1.png",
-                         "cracked_block2.png",
-                         "cracked_block3.png",
-                         "cracked_block4.png",
-                         "cracked_block5.png",
-                         "cracked_block6.png",
-                         ),
-                        ("cracked_block6.png",
-                         "cracked_block5.png",
-                         "cracked_block4.png",
-                         "cracked_block3.png",
-                         "cracked_block2.png",
-                         "cracked_block1.png",
-                         "cracked_block0.png",
-                         ))
-
 MOTION = {K_LEFT: (0, -1),
           K_RIGHT: (0, 1),
           K_UP: (-1, 0),
@@ -56,25 +40,6 @@ ANTIMOTION = {K_LEFT: K_RIGHT,
 
 # Обратный словарь к MOTION. Нужен для поиска команды по известному шагу
 I_MOTION = dict(zip(MOTION.values(), MOTION.keys()))
-
-SOLID_BLOCKS = ('Z', 'O', '=')  # Непроницаемые блоки
-DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
-SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')  # Блоки, на которых можно стоять не падая
-CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, можно стоять на их фоне и не падать
-HANG_BLOCKS = ('-', '_',)  # Блоки, на которых можно висеть
-CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, по которым можно лезть вверх и вниз
-VIRTUAL_BLOCKS = ('U',)  # Блоки, которые мираж
-TREASURE_BLOCKS = ('+',)  # Блоки-сокровища
-EXIT_BLOCKS = ('P', '_',)  # Блоки, появляющиеся, когда все сокровища собраны
-BEAST_BLOCKS = ('X',)  # Символы, помечающие монстров
-DEADLY_BLOCKS = ('*', '~', '0',)  # Смертельные блоки. Игрок и монстры умирают, находясь на них
-
-# Блоки, хранящиеся в карте проверки
-MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
-
-LEVEL_WIDTH = 42
-LEVEL_HEIGHT = 22
-CRACKED_BLOCK_LIFETIME = 400
 
 glCurrentLevel = list()
 

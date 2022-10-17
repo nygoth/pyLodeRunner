@@ -8,10 +8,10 @@ import json
 from block import BLOCK_WIDTH
 
 # Define global game settings like blocks info, animation etc
-GAME_CONFIG_FILE = path.join(path.dirname(__file__), "settings.ini")
+GAME_CONFIG_FILE = path.join(path.dirname(__file__), "structure.ini")
 
 # Define game state file. This is storage for values, that changes during game, like current level, music track etc
-GAME_STATE_FILE = path.join(path.dirname(__file__), "game_state.ini")
+GAME_STATE_FILE = path.join(path.dirname(__file__), "state.ini")
 
 # Размеры спрайтов и уровня в целом
 LEVEL_WIDTH = 42
@@ -141,6 +141,24 @@ ANIMATED_BLOCKS = {'+': ("Treasure",
                          ),
                    }
 
+CRACKED_BLOCK_IMAGES = (("cracked_block0.png",
+                         "cracked_block1.png",
+                         "cracked_block2.png",
+                         "cracked_block3.png",
+                         "cracked_block4.png",
+                         "cracked_block5.png",
+                         "cracked_block6.png",
+                         ),
+                        ("cracked_block6.png",
+                         "cracked_block5.png",
+                         "cracked_block4.png",
+                         "cracked_block3.png",
+                         "cracked_block2.png",
+                         "cracked_block1.png",
+                         "cracked_block0.png",
+                         ))
+CRACKED_BLOCK_LIFETIME = 400
+
 # Кадры анимации для спрайта игрока. Относительно каталога images\Player
 PLAYER_UNIT = {"idle_delay": 300,
                  "fall_delay": 100,
@@ -244,6 +262,21 @@ BEAST_UNITS = {'X': {"folder": "Beast",
                                    "zombie_climb7.png",)
                      },
                }
+
+SOLID_BLOCKS = ('Z', 'O', '=')  # Непроницаемые блоки
+DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
+SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')  # Блоки, на которых можно стоять не падая
+CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, можно стоять на их фоне и не падать
+HANG_BLOCKS = ('-', '_',)  # Блоки, на которых можно висеть
+CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, по которым можно лезть вверх и вниз
+VIRTUAL_BLOCKS = ('U',)  # Блоки, которые мираж
+TREASURE_BLOCKS = ('+',)  # Блоки-сокровища
+EXIT_BLOCKS = ('P', '_',)  # Блоки, появляющиеся, когда все сокровища собраны
+BEAST_BLOCKS = ('X',)  # Символы, помечающие монстров
+DEADLY_BLOCKS = ('*', '~', '0',)  # Смертельные блоки. Игрок и монстры умирают, находясь на них
+
+# Блоки, хранящиеся в карте проверки
+MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
 
 
 def init_config(game_state, config, defaults: tuple = (-1, -1)):
