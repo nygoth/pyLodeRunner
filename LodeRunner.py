@@ -34,7 +34,6 @@ import pygame
 from pygame.locals import *
 
 import block
-from block import BLOCK_WIDTH
 import character
 
 from game_structure import *
@@ -96,6 +95,7 @@ def load_level(filename):
     with open(filename, 'r') as lvl_stream:
         row = 0
 
+        animated = BLOCKS["animated"]
         # Цикл по строкам файла
         for line in lvl_stream:
             static_line = list()
@@ -106,42 +106,43 @@ def load_level(filename):
             # Цикл по отдельным символам строки. Добавляем один символ, чтобы не писать в коде лишних проверок
             # на выход за границы массива
             for ch in line[0:LEVEL_WIDTH + 1]:
-                if ch in character.EXIT_BLOCKS:
+                if ch in EXIT_BLOCKS:
                     exit_line.append(ch)
                     ch = '.'
                 else:
                     exit_line.append('.')
 
-                if ch in ANIMATED_BLOCKS:
+                if ch in animated:
                     glAnimatedEntities[str(row) + ":" + str(col) + ":" + ch] = \
-                        block.AnimatedBlock(ANIMATED_BLOCKS[ch][1], [row, col],
-                                            subfolder=ANIMATED_BLOCKS[ch][0],
-                                            animation_delay=random.randrange(int(ANIMATED_BLOCKS[ch][2][0]),
-                                                                             int(ANIMATED_BLOCKS[ch][2][1]),
-                                                                             int(ANIMATED_BLOCKS[ch][2][2]))
-                                                if isinstance(ANIMATED_BLOCKS[ch][2], (list, tuple))
-                                                else ANIMATED_BLOCKS[ch][2],
-                                            animation_pause=random.randrange(int(ANIMATED_BLOCKS[ch][3][0]),
-                                                                             int(ANIMATED_BLOCKS[ch][3][1]),
-                                                                             int(ANIMATED_BLOCKS[ch][3][2]))
-                                                if isinstance(ANIMATED_BLOCKS[ch][3], (list, tuple))
-                                                else ANIMATED_BLOCKS[ch][3],
-                                            hit_sound=load_sound(ANIMATED_BLOCKS[ch][4]))
-                    if ch in character.TREASURE_BLOCKS:
+                        block.AnimatedBlock(animated[ch][1], [row, col],
+                                            subfolder=animated[ch][0],
+                                            animation_delay=random.randrange(int(animated[ch][2][0]),
+                                                                             int(animated[ch][2][1]),
+                                                                             int(animated[ch][2][2]))
+                                                if isinstance(animated[ch][2], (list, tuple))
+                                                else animated[ch][2],
+                                            animation_pause=random.randrange(int(animated[ch][3][0]),
+                                                                             int(animated[ch][3][1]),
+                                                                             int(animated[ch][3][2]))
+                                                if isinstance(animated[ch][3], (list, tuple))
+                                                else animated[ch][3],
+                                            hit_sound=load_sound(animated[ch][4]))
+                    if ch in TREASURE_BLOCKS:
                         glTreasuresCount += 1
 
-                if ch in character.BEAST_BLOCKS:
-                    glBeasts.append(character.Beast(BEAST_UNITS[ch], [row, col], subfolder=BEAST_UNITS[ch]["folder"],
-                                                    sounds=(None, None, load_sound(BEAST_UNITS[ch]["dieSound"])),
-                                                    idle_delay=BEAST_UNITS[ch]["idle_delay"],
-                                                    fall_delay=BEAST_UNITS[ch]["fall_delay"]))
+                if ch in BEAST_BLOCKS:
+                    monster = BEAST_UNITS[ch]
+                    glBeasts.append(character.Beast(monster, [row, col], subfolder=monster["folder"],
+                                                    sounds=(None, None, load_sound(monster["dieSound"])),
+                                                    idle_delay=monster["idle_delay"],
+                                                    fall_delay=monster["fall_delay"]))
 
                 # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                 if ch == 'I':
                     glPlayer.pos = [row, col]
                     glPlayer.oldpos = [row, col]
 
-                static_line.append(('.', ch)[ch in character.MAPPED_BLOCKS])
+                static_line.append(('.', ch)[ch in MAPPED_BLOCKS])
                 col += 1
 
             static_layer.append(static_line)
@@ -174,6 +175,7 @@ def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
 def collect_treasures(pos):
     """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""
     global glTreasuresCount
+
     for chb in character.TREASURE_BLOCKS:
         key = str(pos[0]) + ":" + str(pos[1]) + ":" + chb
         if key in glAnimatedEntities:
@@ -196,48 +198,43 @@ def collect_treasures(pos):
                 show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
 
 
-def block_killing_action(block: block):
+def block_killing_action(blk: block):
     """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
-    if glPlayer.pos[0] == block.pos[0] and glPlayer.pos[1] == block.pos[1]:
+    if glPlayer.pos[0] == blk.pos[0] and glPlayer.pos[1] == blk.pos[1]:
         return False
-    for beast in glBeasts:
-        if beast.pos[0] == block.pos[0] and beast.pos[1] == block.pos[1]:
-            beast.die()
+    for monster in glBeasts:
+        if monster.pos[0] == blk.pos[0] and monster.pos[1] == blk.pos[1]:
+            monster.die()
     return True
 
 
 def game_over(reason: int):
     """Действия, которые нужно выполнить при завершении игры (по любой причине)"""
     buttons = [btQuit, ]
-    screen_halfwidth = LEVEL_WIDTH * BLOCK_WIDTH / 2
-    screen_halfheight = LEVEL_HEIGHT * BLOCK_WIDTH / 2
+    scr_halfwidth = LEVEL_WIDTH * BLOCK_WIDTH / 2
+    scr_halfheight = LEVEL_HEIGHT * BLOCK_WIDTH / 2
 
     # Если игрок уровень проиграл, то нужно воспроизвести соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
     if reason != GAME_OVER_COMPLETE:
         if glPlayer.die_sound is not None:
             glPlayer.die_sound[reason].play()
-        glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(
-            center=(screen_halfwidth, screen_halfheight)))
+        glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(center=(scr_halfwidth, scr_halfheight)))
 
         btRestart.rect = btRestart.image.get_rect(
-            topleft=(screen_halfwidth - btRestart.rect.width - BLOCK_WIDTH,
-                     screen_halfheight + BLOCK_WIDTH * 2))
+            topleft=(scr_halfwidth - btRestart.rect.width - BLOCK_WIDTH, scr_halfheight + BLOCK_WIDTH * 2))
         btRestart.show(glMainCanvas)
         buttons.append(btRestart)
 
     else:  # Если переход на следующий уровень, то а) нужный звук и б) кнопка "Next level"
         levelEnd_sound.play()
-        glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(
-            center=(screen_halfwidth, screen_halfheight)))
+        glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(center=(scr_halfwidth, scr_halfheight)))
         btNext.rect = btNext.image.get_rect(
-            topleft=(screen_halfwidth - btNext.rect.width - BLOCK_WIDTH,
-                     screen_halfheight + BLOCK_WIDTH * 2))
+            topleft=(scr_halfwidth - btNext.rect.width - BLOCK_WIDTH, scr_halfheight + BLOCK_WIDTH * 2))
         btNext.show(glMainCanvas)
         buttons.append(btNext)
 
-    btQuit.rect = btQuit.image.get_rect(topleft=(screen_halfwidth + BLOCK_WIDTH,
-                                                 screen_halfheight + BLOCK_WIDTH * 2))
+    btQuit.rect = btQuit.image.get_rect(topleft=(scr_halfwidth + BLOCK_WIDTH, scr_halfheight + BLOCK_WIDTH * 2))
     btQuit.show(glMainCanvas)
     pygame.display.update()
 
@@ -272,7 +269,6 @@ def game_over(reason: int):
 # Main body
 # =========
 
-
 # В файле состояния мы храним прогресс игрока -- текущий уровень и текущую музыкальную композицию
 # Все константы и настройки мы храним в конфигурации игры
 config = configparser.ConfigParser()
@@ -285,17 +281,17 @@ BEAST_STEP = int(FPS / BEAST_TEMPO)
 BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
 PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
 
-character.LEVEL_WIDTH = LEVEL_WIDTH
-character.LEVEL_HEIGHT = LEVEL_HEIGHT
-character.CRACKED_BLOCK_LIFETIME = int(FPS * 2.2)
+# Override default lifetime value in structure setting to avoid speed-related issues
+BLOCKS["temporary"]["cracked"][2] = int(FPS * 2.2)
 
 # This makes game screen insensitive to Windows 10 scale setting in screen preferences
 ctypes.windll.user32.SetProcessDPIAware()
 glMainCanvas = init_screen(BLOCK_WIDTH * LEVEL_WIDTH, BLOCK_WIDTH * LEVEL_HEIGHT)
 
 STATIC_BLOCKS = dict()
-for ch in STATIC_BLOCKS_FILES:
-    STATIC_BLOCKS[ch] = block.Block(STATIC_BLOCKS_FILES[ch])
+solid = BLOCKS["static"]
+for ch in solid:
+    STATIC_BLOCKS[ch] = block.Block(solid[ch][0])
 
 glPlayer = character.Player(PLAYER_UNIT["animation"], subfolder=PLAYER_UNIT["folder"],
                             sounds=(load_sound(PLAYER_UNIT["sounds"]["steps"]),
@@ -347,14 +343,10 @@ while running:
 
 pygame.mixer.music.stop()
 
-#
 # Enumerate levels
-#
 (levels_dir, _, levels_list) = next(walk(path.join(path.dirname(__file__), "Levels")), (None, None, []))
 
-#
 # And music
-#
 (music_dir, _, songs_list) = next(walk(path.join(path.dirname(__file__), "Music")), (None, None, []))
 
 #

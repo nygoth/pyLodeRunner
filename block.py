@@ -8,8 +8,7 @@
 
 from os import path
 import pygame
-
-BLOCK_WIDTH = 38
+from game_structure import BLOCK_WIDTH
 
 
 class Block(pygame.sprite.Sprite):
@@ -114,7 +113,7 @@ class AnimatedBlock(Block):
 
     def get_image(self, tick):
         if not self.single:
-            wait_for = self.delay if self.in_action else self.pause
+            wait_for = (self.pause, self.delay)[self.in_action]
 
             if self.ticks < wait_for:
                 self.ticks += 1
@@ -173,7 +172,7 @@ class TemporaryBlock(AnimatedBlock):
         self.underlay = None
         self.sound = sound
         self.images_end = None
-        (img_start, img_end) = img
+        (img_start, img_end, *rest) = img
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
         if isinstance(img_end, (tuple, list)):
@@ -192,7 +191,7 @@ class TemporaryBlock(AnimatedBlock):
 
         if not self.died:
             action = self.in_action
-            img = super().get_image(tick)
+            super().get_image(tick)
 
             # Поведение по завершению анимации отличается.
             # Как только заканчивается стартовая анимация, мы показываем ПОСЛЕДНИЙ её кадр, а не первый.

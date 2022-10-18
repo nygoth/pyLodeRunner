@@ -2,10 +2,7 @@
 # Какие блоки что значат, анимация и прочее
 
 from os import path
-import character
 import json
-
-from block import BLOCK_WIDTH
 
 # Define global game settings like blocks info, animation etc
 GAME_CONFIG_FILE = path.join(path.dirname(__file__), "structure.ini")
@@ -14,6 +11,7 @@ GAME_CONFIG_FILE = path.join(path.dirname(__file__), "structure.ini")
 GAME_STATE_FILE = path.join(path.dirname(__file__), "state.ini")
 
 # Размеры спрайтов и уровня в целом
+BLOCK_WIDTH = 38
 LEVEL_WIDTH = 42
 LEVEL_HEIGHT = 22
 
@@ -26,138 +24,157 @@ TEMPO = 12  # Количество ключевых кадров в секунд
 # Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока
 BEAST_TEMPO = 8  # У монстров ключевых кадров меньше. Они более медлительны
 
-# Спрайты статичных блоков структуры уровня
-STATIC_BLOCKS_FILES = {'Z': "block.png",
-                       'H': "ladder.png",
-                       'O': "concrete_solid.png",
-                       '-': "bar.png",
-                       '_': "exit_bar.png",
-                       'P': "exit_ladder.png",
-                       'U': "block.png",
-                       '=': "platform.png",
-                       }
+# Спрайты блоков структуры уровня
+# Статичные блоки описываются картинкой и опциональной ссылкой на временный блок, который используется,
+# если с этим элементом что-то делают. Например, игрок может разрушать какие-то блоки. Причём, можно запрограммировать
+# для разных разрушаемых блоков разные временные блоки с анимацией разрушения/восстановления
+BLOCKS = {"static": {'Z': ("block.png", "cracked"),
+                     'H': ("ladder.png",),
+                     'O': ("concrete_solid.png",),
+                     '-': ("bar.png",),
+                     '_': ("exit_bar.png",),
+                     'P': ("exit_ladder.png",),
+                     'U': ("block.png",),
+                     '=': ("platform.png",),
+                     },
 
-# Анимированные спрайты структуры уровня
-ANIMATED_BLOCKS = {'+': ("Treasure",
-                         ("treasure0.png",
-                          "treasure1.png",
-                          "treasure2.png",
-                          "treasure3.png",
-                          "treasure4.png",
-                          "treasure5.png",
-                          "treasure6.png",
-                          "treasure7.png",
-                          ),
-                         10,  # задержка между кадрами анимации относительно FPS, больше значение - выше задержка
-                         # Интервал (минимум, максимум, шаг), из которого выбираются (случайным образом)
-                         # паузы между фазами анимации сокровищ. Так отсутствует раздражающая синхронность
-                         # в анимации сокровищ
-                         (100, 400, 20),
-                         "collect.wav",
-                         ),
-                   '*': ("Animation",
-                         ("saw0.png",
-                          "saw1.png",
-                          "saw2.png",
-                          ),
-                         (5, 20, 1),  # задержка между кадрами анимации относительно FPS, больше - выше задержка
-                         0,  # пауза анимации. Можно указать и просто число
-                         "saw.wav",
-                         ),
-                   '0': ("Animation",
-                         ("fullsaw0.png",
-                          "fullsaw1.png",
-                          "fullsaw2.png",
-                          ),
-                         (5, 20, 1),  # задержка между кадрами анимации относительно FPS, больше - выше задержка
-                         0,  # пауза анимации. Можно указать и просто число
-                         "saw.wav",
-                         ),
-                   '/': ("Animation",  # Rope body
-                         ("Rope0.png",
-                          "Rope1.png",
-                          "Rope0.png",
-                          "Rope2.png",
-                          ),
-                         20,
-                         0,
-                         None,
-                         ),
-                   '\\': ("Animation",  # Rope body
-                          ("Rope0.png",
-                           "Rope2.png",
-                           "Rope0.png",
-                           "Rope1.png",
-                           ),
-                          20,
-                          0,
-                          None,
-                          ),
-                   'T': ("Animation",  # Rope head (hook plate)
-                         ("Rope base0.png",
-                          "Rope base1.png",
-                          "Rope base0.png",
-                          "Rope base2.png",
-                          ),
-                         20,
-                         0,
-                         None,
-                         ),
-                   'J': ("Animation",  # Rope tail (knot)
-                         ("Rope tail0.png",
-                          "Rope tail1.png",
-                          "Rope tail0.png",
-                          "Rope tail2.png",
-                          ),
-                         20,
-                         0,
-                         None,
-                         ),
-                   'L': ("Animation",  # Rope tail (knot)
-                         ("Rope tail0.png",
-                          "Rope tail2.png",
-                          "Rope tail0.png",
-                          "Rope tail1.png",
-                          ),
-                         20,
-                         0,
-                         None,
-                         ),
-                   '~': ("Animation",  # Lava
-                         ("Lava0.png",
-                          "Lava1.png",
-                          "Lava2.png",
-                          "Lava3.png",
-                          "Lava4.png",
-                          "Lava5.png",
-                          "Lava6.png",
-                          "Lava7.png",
-                          "Lava8.png",
-                          "Lava9.png",
-                          ),
-                         (15, 30, 1),
-                         (1, 20, 1),
-                         "burned.wav",
-                         ),
-                   }
-
-CRACKED_BLOCK_IMAGES = (("cracked_block0.png",
-                         "cracked_block1.png",
-                         "cracked_block2.png",
-                         "cracked_block3.png",
-                         "cracked_block4.png",
-                         "cracked_block5.png",
-                         "cracked_block6.png",
-                         ),
-                        ("cracked_block6.png",
-                         "cracked_block5.png",
-                         "cracked_block4.png",
-                         "cracked_block3.png",
-                         "cracked_block2.png",
-                         "cracked_block1.png",
-                         "cracked_block0.png",
-                         ))
-CRACKED_BLOCK_LIFETIME = 400
+          # Анимированные неподвижные блоки уровня.
+          # [0] Тип: Treasure -- собираемые блоки
+          #          Animation -- просто анимированный блок
+          # [1] Список кадров
+          # [2] Задержка между кадрами анимации относительно FPS, больше значение - выше задержка.
+          #       Анимация воспроизводится от первого кадра к последнему и либо останавливается на указанное время.
+          # [3] Пауза перед началом следующего цикла анимации
+          #       Задержку и паузу можно указать простым числом, а можно интервалом (минимум, максимум, шаг),
+          #       из которого выбираются (случайным образом) паузы между фазами анимации блока.
+          #       Так отсутствует раздражающая синхронность в анимации однотипных блоков.
+          # [4] Звук, который проигрывается, когда игрок или чудище попадают на этот блок (именно в клеточку
+          #       с этим блоком, а не стоят сверху.
+          "animated": {'+': ("Treasure",    # Collectible item
+                             ("treasure0.png",
+                              "treasure1.png",
+                              "treasure2.png",
+                              "treasure3.png",
+                              "treasure4.png",
+                              "treasure5.png",
+                              "treasure6.png",
+                              "treasure7.png",
+                              ),
+                             10,
+                             (100, 400, 20),
+                             "collect.wav",
+                             ),
+                       '*': ("Animation",   # Floor-mounted saw, half circle
+                             ("saw0.png",
+                              "saw1.png",
+                              "saw2.png",
+                              ),
+                             (5, 20, 1),
+                             0,
+                             "saw.wav",
+                             ),
+                       '0': ("Animation",   # Standalone saw, full circle
+                             ("fullsaw0.png",
+                              "fullsaw1.png",
+                              "fullsaw2.png",
+                              ),
+                             (5, 20, 1),
+                             0,
+                             "saw.wav",
+                             ),
+                       '/': ("Animation",  # Rope body right slope
+                             ("Rope0.png",
+                              "Rope1.png",
+                              "Rope0.png",
+                              "Rope2.png",
+                              ),
+                             20,
+                             0,
+                             None,
+                             ),
+                       '\\': ("Animation",  # Rope body left slope
+                              ("Rope0.png",
+                               "Rope2.png",
+                               "Rope0.png",
+                               "Rope1.png",
+                               ),
+                              20,
+                              0,
+                              None,
+                              ),
+                       'T': ("Animation",  # Rope head (hook plate)
+                             ("Rope base0.png",
+                              "Rope base1.png",
+                              "Rope base0.png",
+                              "Rope base2.png",
+                              ),
+                             20,
+                             0,
+                             None,
+                             ),
+                       'J': ("Animation",  # Rope tail (knot) left turned
+                             ("Rope tail0.png",
+                              "Rope tail1.png",
+                              "Rope tail0.png",
+                              "Rope tail2.png",
+                              ),
+                             20,
+                             0,
+                             None,
+                             ),
+                       'L': ("Animation",  # Rope tail (knot) right turned
+                             ("Rope tail0.png",
+                              "Rope tail2.png",
+                              "Rope tail0.png",
+                              "Rope tail1.png",
+                              ),
+                             20,
+                             0,
+                             None,
+                             ),
+                       '~': ("Animation",  # Lava
+                             ("Lava0.png",
+                              "Lava1.png",
+                              "Lava2.png",
+                              "Lava3.png",
+                              "Lava4.png",
+                              "Lava5.png",
+                              "Lava6.png",
+                              "Lava7.png",
+                              "Lava8.png",
+                              "Lava9.png",
+                              ),
+                             (15, 30, 1),
+                             (1, 20, 1),
+                             "burned.wav",
+                             ),
+                       },
+          # Временные блоки уровня.
+          # Возникают на какое-то время вместо какого-то постоянного блока. Меняют его вид и свойство.
+          # Обычно, анимированны. Именованы, имена используются как ссылки на них
+          # [0] Анимация появления
+          # [1] Анимация исчезания
+          # [2] Время жизни
+          "temporary": {"cracked": [("cracked_block0.png",
+                                     "cracked_block1.png",
+                                     "cracked_block2.png",
+                                     "cracked_block3.png",
+                                     "cracked_block4.png",
+                                     "cracked_block5.png",
+                                     "cracked_block6.png",
+                                     ),
+                                    ("cracked_block6.png",
+                                     "cracked_block5.png",
+                                     "cracked_block4.png",
+                                     "cracked_block3.png",
+                                     "cracked_block2.png",
+                                     "cracked_block1.png",
+                                     "cracked_block0.png",
+                                     ),
+                                    400,
+                                    ],
+                        }
+          }
 
 # Кадры анимации для спрайта игрока. Относительно каталога images\Player
 PLAYER_UNIT = {"idle_delay": 300,
@@ -266,7 +283,7 @@ BEAST_UNITS = {'X': {"folder": "Beast",
 SOLID_BLOCKS = ('Z', 'O', '=')  # Непроницаемые блоки
 DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
 SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')  # Блоки, на которых можно стоять не падая
-CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, можно стоять на их фоне и не падать
+CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, на фоне которых можно стоять и не падать
 HANG_BLOCKS = ('-', '_',)  # Блоки, на которых можно висеть
 CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, по которым можно лезть вверх и вниз
 VIRTUAL_BLOCKS = ('U',)  # Блоки, которые мираж
@@ -280,8 +297,10 @@ MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + 
 
 
 def init_config(game_state, config, defaults: tuple = (-1, -1)):
-    global STATIC_BLOCKS_FILES, ANIMATED_BLOCKS, PLAYER_UNIT, BLOCK_WIDTH
+    global BLOCKS, PLAYER_UNIT, BLOCK_WIDTH
     global BEAST_UNITS, LEVEL_HEIGHT, LEVEL_WIDTH, STEP, TEMPO, BEAST_TEMPO
+    global SOLID_BLOCKS, DESTRUCTABLE_BLOCKS, SUPPORT_BLOCKS, CARRY_BLOCKS, HANG_BLOCKS, CLIMB_BLOCKS
+    global VIRTUAL_BLOCKS, TREASURE_BLOCKS, EXIT_BLOCKS, BEAST_BLOCKS, DEADLY_BLOCKS, MAPPED_BLOCKS
 
     (current_level, current_song) = defaults
 
@@ -296,10 +315,8 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
 
     if path.exists(GAME_CONFIG_FILE):
         config.read(GAME_CONFIG_FILE)
-        STATIC_BLOCKS_FILES = json.loads(
-            config.get("Blocks", "STATIC BLOCKS FILES", fallback=json.dumps(STATIC_BLOCKS_FILES)).replace("'", "\""))
-        ANIMATED_BLOCKS = json.loads(
-            config.get("Blocks", "ANIMATED BLOCKS", fallback=json.dumps(ANIMATED_BLOCKS)).replace("'", "\""))
+        BLOCKS = json.loads(
+            config.get("Blocks", "BLOCKS", fallback=json.dumps(BLOCKS)).replace("'", "\""))
 
         PLAYER_UNIT = json.loads(
             config.get("Characters", "PLAYER UNIT", fallback=json.dumps(PLAYER_UNIT)).replace("'", "\""))
@@ -314,30 +331,30 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
         TEMPO = int(config.get("Game", "TEMPO", fallback=TEMPO))
         BEAST_TEMPO = int(config.get("Game", "BEAST TEMPO", fallback=BEAST_TEMPO))
 
-        character.SOLID_BLOCKS = json.loads(
-            config.get("Structure", "SOLID BLOCKS", fallback=json.dumps(character.SOLID_BLOCKS)).replace("'", "\""))
-        character.DESTRUCTABLE_BLOCKS = json.loads(
-            config.get("Structure", "DESTRUCTABLE BLOCKS",
-                       fallback=json.dumps(character.DESTRUCTABLE_BLOCKS)).replace("'", "\""))
-        character.SUPPORT_BLOCKS = json.loads(
-            config.get("Structure", "SUPPORT BLOCKS", fallback=json.dumps(character.SUPPORT_BLOCKS)).replace("'", "\""))
-        character.CARRY_BLOCKS = json.loads(
-            config.get("Structure", "CARRY BLOCKS", fallback=json.dumps(character.CARRY_BLOCKS)).replace("'", "\""))
-        character.HANG_BLOCKS = json.loads(
-            config.get("Structure", "HANG BLOCKS", fallback=json.dumps(character.HANG_BLOCKS)).replace("'", "\""))
-        character.CLIMB_BLOCKS = json.loads(
-            config.get("Structure", "CLIMB BLOCKS", fallback=json.dumps(character.CLIMB_BLOCKS)).replace("'", "\""))
-        character.VIRTUAL_BLOCKS = json.loads(
-            config.get("Structure", "VIRTUAL BLOCKS", fallback=json.dumps(character.VIRTUAL_BLOCKS)).replace("'", "\""))
-        character.TREASURE_BLOCKS = json.loads(
-            config.get("Structure", "TREASURE BLOCKS", fallback=json.dumps(character.TREASURE_BLOCKS)).replace("'",
-                                                                                                               "\""))
-        character.EXIT_BLOCKS = json.loads(
-            config.get("Structure", "EXIT BLOCKS", fallback=json.dumps(character.EXIT_BLOCKS)).replace("'", "\""))
-        character.BEAST_BLOCKS = json.loads(
-            config.get("Structure", "BEAST BLOCKS", fallback=json.dumps(character.BEAST_BLOCKS)).replace("'", "\""))
-        character.DEADLY_BLOCKS = json.loads(
-            config.get("Structure", "DEADLY BLOCKS", fallback=json.dumps(character.DEADLY_BLOCKS)).replace("'", "\""))
+        SOLID_BLOCKS = json.loads(
+            config.get("Structure", "SOLID BLOCKS", fallback=json.dumps(SOLID_BLOCKS)).replace("'", "\""))
+        DESTRUCTABLE_BLOCKS = json.loads(
+            config.get("Structure", "DESTRUCTABLE BLOCKS", fallback=json.dumps(DESTRUCTABLE_BLOCKS)).replace("'", "\""))
+        SUPPORT_BLOCKS = json.loads(
+            config.get("Structure", "SUPPORT BLOCKS", fallback=json.dumps(SUPPORT_BLOCKS)).replace("'", "\""))
+        CARRY_BLOCKS = json.loads(
+            config.get("Structure", "CARRY BLOCKS", fallback=json.dumps(CARRY_BLOCKS)).replace("'", "\""))
+        HANG_BLOCKS = json.loads(
+            config.get("Structure", "HANG BLOCKS", fallback=json.dumps(HANG_BLOCKS)).replace("'", "\""))
+        CLIMB_BLOCKS = json.loads(
+            config.get("Structure", "CLIMB BLOCKS", fallback=json.dumps(CLIMB_BLOCKS)).replace("'", "\""))
+        VIRTUAL_BLOCKS = json.loads(
+            config.get("Structure", "VIRTUAL BLOCKS", fallback=json.dumps(VIRTUAL_BLOCKS)).replace("'", "\""))
+        TREASURE_BLOCKS = json.loads(
+            config.get("Structure", "TREASURE BLOCKS", fallback=json.dumps(TREASURE_BLOCKS)).replace("'", "\""))
+        EXIT_BLOCKS = json.loads(
+            config.get("Structure", "EXIT BLOCKS", fallback=json.dumps(EXIT_BLOCKS)).replace("'", "\""))
+        BEAST_BLOCKS = json.loads(
+            config.get("Structure", "BEAST BLOCKS", fallback=json.dumps(BEAST_BLOCKS)).replace("'", "\""))
+        DEADLY_BLOCKS = json.loads(
+            config.get("Structure", "DEADLY BLOCKS", fallback=json.dumps(DEADLY_BLOCKS)).replace("'", "\""))
+
+        MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
     else:
         config.add_section("Game")
         config.add_section("Geometry")
@@ -351,21 +368,20 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
         config["Geometry"]["BLOCK WIDTH"] = str(BLOCK_WIDTH)
         config["Geometry"]["LEVEL WIDTH"] = str(LEVEL_WIDTH)
         config["Geometry"]["LEVEL HEIGHT"] = str(LEVEL_HEIGHT)
-        config["Blocks"]["STATIC BLOCKS FILES"] = json.dumps(STATIC_BLOCKS_FILES)
-        config["Blocks"]["ANIMATED BLOCKS"] = json.dumps(ANIMATED_BLOCKS)
+        config["Blocks"]["BLOCKS"] = json.dumps(BLOCKS)
         config["Characters"]["PLAYER UNIT"] = json.dumps(PLAYER_UNIT)
         config["Characters"]["BEAST UNITS"] = json.dumps(BEAST_UNITS)
-        config["Structure"]["SOLID BLOCKS"] = json.dumps(character.SOLID_BLOCKS)
-        config["Structure"]["DESTRUCTABLE BLOCKS"] = json.dumps(character.DESTRUCTABLE_BLOCKS)
-        config["Structure"]["SUPPORT BLOCKS"] = json.dumps(character.SUPPORT_BLOCKS)
-        config["Structure"]["CARRY BLOCKS"] = json.dumps(character.CARRY_BLOCKS)
-        config["Structure"]["HANG BLOCKS"] = json.dumps(character.HANG_BLOCKS)
-        config["Structure"]["CLIMB BLOCKS"] = json.dumps(character.CLIMB_BLOCKS)
-        config["Structure"]["VIRTUAL BLOCKS"] = json.dumps(character.VIRTUAL_BLOCKS)
-        config["Structure"]["TREASURE BLOCKS"] = json.dumps(character.TREASURE_BLOCKS)
-        config["Structure"]["EXIT BLOCKS"] = json.dumps(character.EXIT_BLOCKS)
-        config["Structure"]["BEAST BLOCKS"] = json.dumps(character.BEAST_BLOCKS)
-        config["Structure"]["DEADLY BLOCKS"] = json.dumps(character.DEADLY_BLOCKS)
+        config["Structure"]["SOLID BLOCKS"] = json.dumps(SOLID_BLOCKS)
+        config["Structure"]["DESTRUCTABLE BLOCKS"] = json.dumps(DESTRUCTABLE_BLOCKS)
+        config["Structure"]["SUPPORT BLOCKS"] = json.dumps(SUPPORT_BLOCKS)
+        config["Structure"]["CARRY BLOCKS"] = json.dumps(CARRY_BLOCKS)
+        config["Structure"]["HANG BLOCKS"] = json.dumps(HANG_BLOCKS)
+        config["Structure"]["CLIMB BLOCKS"] = json.dumps(CLIMB_BLOCKS)
+        config["Structure"]["VIRTUAL BLOCKS"] = json.dumps(VIRTUAL_BLOCKS)
+        config["Structure"]["TREASURE BLOCKS"] = json.dumps(TREASURE_BLOCKS)
+        config["Structure"]["EXIT BLOCKS"] = json.dumps(EXIT_BLOCKS)
+        config["Structure"]["BEAST BLOCKS"] = json.dumps(BEAST_BLOCKS)
+        config["Structure"]["DEADLY BLOCKS"] = json.dumps(DEADLY_BLOCKS)
 
         with open(GAME_CONFIG_FILE, "w") as config_file:
             config.write(config_file)

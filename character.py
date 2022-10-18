@@ -114,7 +114,7 @@ class Character(block.Block):
             z = state1
 
     def __set_state__(self):
-        self.move_state = STATE_HANG if glCurrentLevel[0][self.pos[0]][self.pos[1]] in HANG_BLOCKS else STATE_STAND
+        self.move_state = (STATE_STAND, STATE_HANG)[glCurrentLevel[0][self.pos[0]][self.pos[1]] in HANG_BLOCKS]
 
     @staticmethod
     def __in_obstacle__(obstacles: list, pos: tuple):
@@ -226,7 +226,6 @@ class Beast(Character):
         if self.idioticy == 0:
             self.range = random.randrange(0, 4)
             if disp_y != 0:
-                # if disp_x == 0 or glCurrentLevel[0][self.pos[0] + 1][self.pos[1]] in SUPPORT_BLOCKS + CARRY_BLOCKS:
                 k_vert = I_MOTION[(disp_y, 0)]
                 res = super().move((disp_y, 0), beasts)
             # Смогли пойти вертикально по направлению к игроку
@@ -264,9 +263,10 @@ class Player(Character):
 
     def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
         super(Player, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay)
-        self.cracked_block = block.TemporaryBlock(CRACKED_BLOCK_IMAGES,
-                                                  subfolder="Animation", animation_delay=CRACKED_BLOCK_LIFETIME / 100,
-                                                  animation_pause=CRACKED_BLOCK_LIFETIME)
+        cracked = BLOCKS["temporary"][BLOCKS["static"]["Z"][1]]
+        self.cracked_block = block.TemporaryBlock(cracked,
+                                                  subfolder="Animation", animation_delay=cracked[2] / 100,
+                                                  animation_pause=cracked[2])
 
     def move(self, obstacles: list = None, temporary_items: list = None):
         pressed_keys = pygame.key.get_pressed()
@@ -290,8 +290,7 @@ class Player(Character):
                 if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
                         glCurrentLevel[0][self.pos[0]][self.pos[1] + attack[key][1]] == '.' and \
                         glCurrentLevel[0][self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
-                    if self.attack_sound is not None:
-                        self.attack_sound.play()
+                    self.attack_sound is not None and self.attack_sound.play()
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
