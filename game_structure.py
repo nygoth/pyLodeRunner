@@ -1,29 +1,39 @@
-# Описание игровой структуры
-# Какие блоки что значат, анимация и прочее
+""" Описание игровой структуры
+ Какие блоки что значат, анимация и прочее
+"""
 
 from os import path
 import json
 
-# Define global game settings like blocks info, animation etc
 GAME_CONFIG_FILE = path.join(path.dirname(__file__), "structure.ini")
+"""Define global game settings like blocks info, animation etc"""
 
-# Define game state file. This is storage for values, that changes during game, like current level, music track etc
 GAME_STATE_FILE = path.join(path.dirname(__file__), "state.ini")
+"""Define game state file. This is storage for values, that changes during game, like current level, music track etc"""
 
-# Размеры спрайтов и уровня в целом
 BLOCK_WIDTH = 38
+"""Размер спрайтов"""
+
 LEVEL_WIDTH = 42
+"""Ширина уровня"""
+
 LEVEL_HEIGHT = 22
+"""Высота уровня"""
 
-STEP = 24  # Шагов анимации между ключевыми кадрами (в которых игра воспринимает управление)
-TEMPO = 12  # Количество ключевых кадров в секунду. Темп игры
+STEP = 24
+"""Шагов анимации между ключевыми кадрами (в которых игра воспринимает управление)"""
 
-# Для корректной работы BEAST_STEP * BEAST_TEMPO должно совпадать с FPS
-# Поэтому надо подбирать значения тщательно, чтобы всё делилось нацело
-# Если эти значения совпадают со значениями игрока, монстры перемещаются с его скоростью
-# Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока
-BEAST_TEMPO = 8  # У монстров ключевых кадров меньше. Они более медлительны
+TEMPO = 12
+"""Количество ключевых кадров в секунду. Темп игры"""
 
+BEAST_TEMPO = 8
+"""Количество ключевых кадров для монстров. Их меньше. Они более медлительны.
+
+    Для корректной работы BEAST_STEP * BEAST_TEMPO должно совпадать с FPS.
+Поэтому надо подбирать значения тщательно, чтобы всё делилось нацело.
+Если эти значения совпадают со значениями игрока, монстры перемещаются с его скоростью.
+Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока.
+"""
 # Спрайты блоков структуры уровня
 # Статичные блоки описываются картинкой и опциональной ссылкой на временный блок, который используется,
 # если с этим элементом что-то делают. Например, игрок может разрушать какие-то блоки. Причём, можно запрограммировать
@@ -49,7 +59,7 @@ BLOCKS = {"static": {'Z': ("block.png", "cracked"),
           #       из которого выбираются (случайным образом) паузы между фазами анимации блока.
           #       Так отсутствует раздражающая синхронность в анимации однотипных блоков.
           # [4] Звук, который проигрывается, когда игрок или чудище попадают на этот блок (именно в клеточку
-          #       с этим блоком, а не стоят сверху.
+          #       с этим блоком, а не стоят сверху).
           "animated": {'+': ("Treasure",    # Collectible item
                              ("treasure0.png",
                               "treasure1.png",
@@ -151,7 +161,7 @@ BLOCKS = {"static": {'Z': ("block.png", "cracked"),
                        },
           # Временные блоки уровня.
           # Возникают на какое-то время вместо какого-то постоянного блока. Меняют его вид и свойство.
-          # Обычно, анимированны. Именованы, имена используются как ссылки на них
+          # Обычно, анимированны. Именованы, имена используются как ссылки на них.
           # [0] Анимация появления
           # [1] Анимация исчезания
           # [2] Время жизни
@@ -178,125 +188,137 @@ BLOCKS = {"static": {'Z': ("block.png", "cracked"),
 
 # Кадры анимации для спрайта игрока. Относительно каталога images\Player
 PLAYER_UNIT = {"idle_delay": 300,
-                 "fall_delay": 100,
-                 "folder": "Player",
-                 "sounds": {"steps": "footsteps.wav",
-                            "attack": "attack.wav",
-                            "eaten": "eaten.wav",
-                            "killed": "beast die.wav",
-                            "stuck": "beast die.wav",
-                            "leave": "user end.wav"
-                            },
-                 "animation": {"idle": ("player_idle0.png",
-                                          "player_idle1.png",
-                                          "player_idle2.png",
-                                          "player_idle3.png",
-                                        ),
-                                 "fall": ("player_fall0.png",
-                                          "player_fall1.png",
-                                          "player_fall2.png",
-                                          "player_fall3.png",
+               "fall_delay": 100,
+               "folder": "Player",
+               "sounds": {"steps": "footsteps.wav",
+                          "attack": "attack.wav",
+                          "eaten": "eaten.wav",
+                          "killed": "beast die.wav",
+                          "stuck": "beast die.wav",
+                          "leave": "user end.wav"
+                          },
+               "animation": {"idle": ("player_idle0.png",
+                                      "player_idle1.png",
+                                      "player_idle2.png",
+                                      "player_idle3.png",
+                                      ),
+                             "fall": ("player_fall0.png",
+                                      "player_fall1.png",
+                                      "player_fall2.png",
+                                      "player_fall3.png",
+                                      ),
+                             "hang": ("player_hang_idle0.png",
+                                      "player_hang_idle1.png",
+                                      ),
+                             "walk_right": ("player_walk0.png",
+                                            "player_walk1.png",
+                                            "player_walk2.png",
+                                            "player_walk3.png",
+                                            "player_walk4.png",
+                                            "player_walk5.png",
+                                            "player_walk6.png",
+                                            "player_walk7.png"),
+                             "walk_hang_right": ("character_maleAdventurer_hang0.png",
+                                                 "character_maleAdventurer_hang1.png",
+                                                 "character_maleAdventurer_hang2.png",
+                                                 "character_maleAdventurer_hang3.png",
+                                                 ),
+                             "climb_up": ("player_climb0.png",
+                                          "player_climb1.png",
+                                          "player_climb2.png",
+                                          "player_climb3.png",
+                                          "player_climb4.png",
+                                          "player_climb5.png",
+                                          "player_climb6.png",
+                                          "player_climb7.png",
                                           ),
-                                 "hang": ("player_hang_idle0.png",
-                                          "player_hang_idle1.png",
-                                          ),
-                                 "walk_right": ("player_walk0.png",
-                                                "player_walk1.png",
-                                                "player_walk2.png",
-                                                "player_walk3.png",
-                                                "player_walk4.png",
-                                                "player_walk5.png",
-                                                "player_walk6.png",
-                                                "player_walk7.png"),
-                                 "walk_hang_right": ("character_maleAdventurer_hang0.png",
-                                                     "character_maleAdventurer_hang1.png",
-                                                     "character_maleAdventurer_hang2.png",
-                                                     "character_maleAdventurer_hang3.png",
-                                                     ),
-                                 "climb_up": ("player_climb0.png",
-                                              "player_climb1.png",
-                                              "player_climb2.png",
-                                              "player_climb3.png",
-                                              "player_climb4.png",
-                                              "player_climb5.png",
-                                              "player_climb6.png",
-                                              "player_climb7.png",
-                                              ),
-                                 "attack_left": ("attack0.png",
-                                                 "attack1.png",
-                                                 "attack2.png",
-                                                 "attack3.png",
-                                                 "attack3.png",
-                                                 "attack4.png",
-                                                 "attack5.png",
-                                                 "attack6.png",
-                                                 )
-                               }
+                             "attack_left": ("attack0.png",
+                                             "attack1.png",
+                                             "attack2.png",
+                                             "attack3.png",
+                                             "attack3.png",
+                                             "attack4.png",
+                                             "attack5.png",
+                                             "attack6.png",
+                                             )
+                             }
                }
 
 # Кадры для анимации монстров. Относительно каталога images\Beast
 BEAST_UNITS = {'X': {"folder": "Beast",
-                      "dieSound": "beast die.wav",
-                      "idle_delay": 250,
-                      "fall_delay": 100,
-                      "idle": ("zombie_idle0.png",
-                               "zombie_idle1.png",
-                               "zombie_idle0.png",
-                               "zombie_idle2.png",
-                               ),
-                      "fall": ("zombie_fall0.png",
-                               "zombie_fall1.png",
-                               "zombie_fall2.png",
-                               "zombie_fall1.png",),
-                      "hang": ("zombie_hang_idle0.png",
-                               "zombie_hang_idle1.png",
-                               "zombie_hang_idle0.png",
-                               "zombie_hang_idle2.png",),
-                      "walk_right": ("zombie_walk0.png",
-                                     "zombie_walk1.png",
-                                     "zombie_walk2.png",
-                                     "zombie_walk3.png",
-                                     "zombie_walk4.png",
-                                     "zombie_walk5.png",
-                                     "zombie_walk6.png",
-                                     "zombie_walk7.png",),
-                      "walk_hang_right": ("zombie_hang0.png",
-                                          "zombie_hang1.png",
-                                          "zombie_hang2.png",
-                                          "zombie_hang3.png",
-                                          "zombie_hang4.png",
-                                          "zombie_hang5.png",
-                                          "zombie_hang6.png",
-                                          "zombie_hang7.png",
-                                          ),
-                      "climb_up": ("zombie_climb0.png",
-                                   "zombie_climb1.png",
-                                   "zombie_climb2.png",
-                                   "zombie_climb3.png",
-                                   "zombie_climb4.png",
-                                   "zombie_climb5.png",
-                                   "zombie_climb6.png",
-                                   "zombie_climb7.png",)
+                     "dieSound": "beast die.wav",
+                     "idle_delay": 250,
+                     "fall_delay": 100,
+                     "idle": ("zombie_idle0.png",
+                              "zombie_idle1.png",
+                              "zombie_idle0.png",
+                              "zombie_idle2.png",
+                              ),
+                     "fall": ("zombie_fall0.png",
+                              "zombie_fall1.png",
+                              "zombie_fall2.png",
+                              "zombie_fall1.png",),
+                     "hang": ("zombie_hang_idle0.png",
+                              "zombie_hang_idle1.png",
+                              "zombie_hang_idle0.png",
+                              "zombie_hang_idle2.png",),
+                     "walk_right": ("zombie_walk0.png",
+                                    "zombie_walk1.png",
+                                    "zombie_walk2.png",
+                                    "zombie_walk3.png",
+                                    "zombie_walk4.png",
+                                    "zombie_walk5.png",
+                                    "zombie_walk6.png",
+                                    "zombie_walk7.png",),
+                     "walk_hang_right": ("zombie_hang0.png",
+                                         "zombie_hang1.png",
+                                         "zombie_hang2.png",
+                                         "zombie_hang3.png",
+                                         "zombie_hang4.png",
+                                         "zombie_hang5.png",
+                                         "zombie_hang6.png",
+                                         "zombie_hang7.png",
+                                         ),
+                     "climb_up": ("zombie_climb0.png",
+                                  "zombie_climb1.png",
+                                  "zombie_climb2.png",
+                                  "zombie_climb3.png",
+                                  "zombie_climb4.png",
+                                  "zombie_climb5.png",
+                                  "zombie_climb6.png",
+                                  "zombie_climb7.png",)
                      },
                }
 
-SOLID_BLOCKS = ('Z', 'O', '=')  # Непроницаемые блоки
-DESTRUCTABLE_BLOCKS = ('Z',)  # Разрушаемые блоки
-SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')  # Блоки, на которых можно стоять не падая
-CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, на фоне которых можно стоять и не падать
-HANG_BLOCKS = ('-', '_',)  # Блоки, на которых можно висеть
-CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')  # Блоки, по которым можно лезть вверх и вниз
-VIRTUAL_BLOCKS = ('U',)  # Блоки, которые мираж
-TREASURE_BLOCKS = ('+',)  # Блоки-сокровища
-EXIT_BLOCKS = ('P', '_',)  # Блоки, появляющиеся, когда все сокровища собраны
-BEAST_BLOCKS = ('X',)  # Символы, помечающие монстров
-DEADLY_BLOCKS = ('*', '~', '0',)  # Смертельные блоки. Игрок и монстры умирают, находясь на них
+SOLID_BLOCKS = ('Z', 'O', '=')
+"""Непроницаемые блоки"""
+DESTRUCTABLE_BLOCKS = ('Z',)
+"""Разрушаемые блоки"""
+SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')
+"""Блоки, на которых можно стоять не падая"""
+CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')
+"""Блоки, на фоне которых можно стоять и не падать"""
+HANG_BLOCKS = ('-', '_',)
+"""Блоки, на которых можно висеть"""
+CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')
+"""Блоки, по которым можно лезть вверх и вниз"""
+VIRTUAL_BLOCKS = ('U',)
+"""Блоки, которые мираж"""
+TREASURE_BLOCKS = ('+',)
+"""Блоки-сокровища"""
+EXIT_BLOCKS = ('P', '_',)
+"""Блоки, появляющиеся, когда все сокровища собраны"""
+BEAST_BLOCKS = ('X',)
+"""Символы, помечающие монстров"""
+DEADLY_BLOCKS = ('*', '~', '0',)
+"""Смертельные блоки. Игрок и монстры умирают, находясь на них"""
 
-# Блоки, хранящиеся в карте проверки
 MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
+"""Блоки, хранящиеся в карте проверки"""
 
 
 def init_config(game_state, config, defaults: tuple = (-1, -1)):
+    """Загрузка или установка конфигурации по умолчанию и создание файлов конфигурации"""
     global BLOCKS, PLAYER_UNIT, BLOCK_WIDTH
     global BEAST_UNITS, LEVEL_HEIGHT, LEVEL_WIDTH, STEP, TEMPO, BEAST_TEMPO
     global SOLID_BLOCKS, DESTRUCTABLE_BLOCKS, SUPPORT_BLOCKS, CARRY_BLOCKS, HANG_BLOCKS, CLIMB_BLOCKS

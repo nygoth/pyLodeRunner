@@ -1,10 +1,14 @@
-# Классы блоков. Это базовый класс для всех спрайтов игры. Плюс, класс анимированных, но статичных спрайтов
+""" Классы блоков.
+ Это базовый класс для всех спрайтов игры.
+ Плюс, класс анимированных, но статичных спрайтов.
+ И класс временных анимированных спрайтов. С их помощью подсвечиваются различные события уровня.
 
-# V 2.1
+ V 2.1
 
-# 2.1 Реализован класс Button
+ 2.1 Реализован класс Button
 
-# 2.0 Реализован класс TemporaryBlock
+ 2.0 Реализован класс TemporaryBlock
+"""
 
 from os import path
 import pygame
@@ -14,8 +18,10 @@ from game_structure import BLOCK_WIDTH
 class Block(pygame.sprite.Sprite):
     """Спрайт уровня. Неподвижный, с разными характеристиками проницаемости"""
 
-    def __init__(self, img, subfolder=""):
+    def __init__(self, img, position: list = None, subfolder=""):
         super().__init__()
+        self.pos = [0, 0] if position is None else position
+        self.oldpos = None
         self.base_images_folder = path.join(path.dirname(__file__), "images", subfolder)
 
         if img is not None:
@@ -32,6 +38,7 @@ class Block(pygame.sprite.Sprite):
 
     # TODO Реализовать масштабирование
     def copy(self, xflip=False, yflip=False, scale=1):
+        """Копирование текущего экземпляра в новый объект с возможностью отобразить зеркально."""
         copied = Block(None)
 
         if xflip or yflip:
@@ -40,6 +47,20 @@ class Block(pygame.sprite.Sprite):
             copied.image = self.image.copy()
 
         return copied
+
+    def get_screen_pos(self, step=0.0, tick=0):
+        """Переводит старую и новую позицию в знакоместах в экранные координаты относительно текущего игрового тика"""
+        if self.oldpos is None:
+            return self.pos[1] * BLOCK_WIDTH, self.pos[0] * BLOCK_WIDTH
+
+        disp = step * tick
+        disp_x = (self.pos[1] - self.oldpos[1]) * disp
+        disp_y = (self.pos[0] - self.oldpos[0]) * disp
+        return self.oldpos[1] * BLOCK_WIDTH + disp_x, self.oldpos[0] * BLOCK_WIDTH + disp_y
+
+    def show(self, canvas: pygame.Surface, pos: tuple):
+        """Рисование спрайта в заданных координатах сетки на заданной канве"""
+        canvas.blit(self.image, self.image.get_rect(topleft=(pos[0] * BLOCK_WIDTH, pos[1] * BLOCK_WIDTH)))
 
 
 class Button(Block):
@@ -77,25 +98,20 @@ class Button(Block):
     def get_image(self):
         return self.images[self.pressed_state]
 
-    def show(self, canvas, state=None):
+    def show(self, canvas: pygame.Surface, state=None):
         """Рисует кнопку в соответствующем состоянии"""
         if state is None:
             state = self.pressed_state
 
         self.pressed_state = state
-        if state:
-            canvas.blit(self.get_image(), self.rect)
-            return None
-        else:
-            canvas.blit(self.get_image(), self.rect)
-            return self.event
+        canvas.blit(self.get_image(), self.rect)
+        return (self.event, None)[state]
 
 
 class AnimatedBlock(Block):
     """Анимированный спрайт уровня. Неподвижный"""
 
     def __init__(self, img, position=None, subfolder="", animation_delay=0, animation_pause=0, hit_sound=None):
-        self.pos = [0, 0] if position is None else position
         self.delay = animation_delay
         self.pause = animation_pause
         self.images = list()
@@ -105,10 +121,10 @@ class AnimatedBlock(Block):
         self.in_action = True
         self.hit_sound = hit_sound
 
-        super(AnimatedBlock, self).__init__(None, subfolder)
+        super(AnimatedBlock, self).__init__(None, position, subfolder)
         if isinstance(img, (tuple, list)):
             for file in img:
-                self.images.append(Block(file, subfolder))
+                self.images.append(Block(file, position, subfolder))
             self.single = False
 
     def get_image(self, tick):
@@ -129,6 +145,9 @@ class AnimatedBlock(Block):
             return self.images[self.current_frame].image
         else:
             return self.image
+
+    def show(self, canvas: pygame.Surface, tick):
+        canvas.blit(self.get_image(tick), self.get_screen_pos(tick=tick))
 
     def copy(self, xflip=False, yflip=False, scale=1):
         copied = AnimatedBlock(None, self.pos, animation_delay=self.delay, animation_pause=self.pause)
@@ -178,7 +197,7 @@ class TemporaryBlock(AnimatedBlock):
         if isinstance(img_end, (tuple, list)):
             self.images_end = list()
             for file in img_end:
-                self.images_end.append(Block(file, subfolder))
+                self.images_end.append(Block(file, position, subfolder))
 
     def get_image(self, tick):
         if self.single:

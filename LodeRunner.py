@@ -1,28 +1,31 @@
-# LodeRunner clone game
-# This project is for studying python programming
-# V 7.7
-# Рефактор кода.
-# Кроме того, настройки разнесены по разным файлам. Собственно настройки -- то, что считывается вначале игры и больше
-# не меняется, и состояние игры, которое меняется от уровня к уровню.
-# Кроме того, некоторый код перенесён в соответствующие классы как метод. Был глобальной процедурой.
-#
-# План на 7.8 -- Реализация отдельного класса для уровня, перенос в него всех
-# # проблем, связанных с загрузкой, анимацией и прочими вещами, характерными для уровней.
-# Плюс -- новый формат уровней. Помимо символов блоков нужно сделать такую же по размеру таблицу,
-# которая будет задавать какие-то атрибуты блоков. Как минимум, группировку нескольких блоков в одну группу анимации.
-# Чтобы верёвки, например, колебались каждая со своей скоростью.
+""" LodeRunner clone game
+ This project is for studying python programming
 
-# В данном проекте есть один серьёзный недочёт дизайна -- сейчас при загрузке уровня
-# все анимированные спрайты создаются и загружаются заново. На каждый новый уровень. Причём, на каждый блок своя копия.
-# Это неоптимально. Картинки анимации, например, достаточно загрузить один раз за всю игру
-# по одному экземпляру на каждый тип анимированного спрайта.
-# Для этого можно ввести промежуточный класс между Block и всеми наследниками -- что-то типа ImageArray
-# Или перед Block, а последний сделать вырожденным случаем.
+ V 7.7
 
-# Замечание на релиз 8.0. Для улучшения вовлечённости, нужно добавить подсчёт очков за уровень и, возможно, ввести
-# опционально количество жизней. Очки считать очень просто -- обратное от времени, прошедшего между подборами сокровищ.
-# Смысл в том, что чем быстрее собираются сокровища (и достигается выход), тем больше очков за уровень получаешь.
-# Можно вести таблицу рекордов в сети.
+ Рефактор кода.
+ Кроме того, настройки разнесены по разным файлам. Собственно настройки -- то, что считывается вначале игры и больше
+ не меняется, и состояние игры, которое меняется от уровня к уровню.
+ Кроме того, некоторый код перенесён в соответствующие классы как метод. Был глобальной процедурой.
+
+ План на 7.8 -- Реализация отдельного класса для уровня, перенос в него всех
+ # проблем, связанных с загрузкой, анимацией и прочими вещами, характерными для уровней.
+ Плюс -- новый формат уровней. Помимо символов блоков нужно сделать такую же по размеру таблицу,
+ которая будет задавать какие-то атрибуты блоков. Как минимум, группировку нескольких блоков в одну группу анимации.
+ Чтобы верёвки, например, колебались каждая со своей скоростью.
+
+ В данном проекте есть один серьёзный недочёт дизайна -- сейчас при загрузке уровня
+ все анимированные спрайты создаются и загружаются заново. На каждый новый уровень. Причём, на каждый блок своя копия.
+ Это не оптимально. Картинки анимации, например, достаточно загрузить один раз за всю игру
+ по одному экземпляру на каждый тип анимированного спрайта.
+ Для этого можно ввести промежуточный класс между Block и всеми наследниками -- что-то типа ImageArray
+ Или перед Block, а последний сделать вырожденным случаем.
+
+ Замечание на релиз 8.0. Для улучшения вовлечённости, нужно добавить подсчёт очков за уровень и, возможно, ввести
+ опционально количество жизней. Очки считать очень просто -- обратное от времени, прошедшего между подборами сокровищ.
+ Смысл в том, что чем быстрее собираются сокровища (и достигается выход), тем больше очков за уровень получаешь.
+ Можно вести таблицу рекордов в сети.
+"""
 
 from os import walk
 import random
@@ -30,6 +33,7 @@ import sys
 import ctypes
 
 import configparser
+
 import pygame
 from pygame.locals import *
 
@@ -60,17 +64,6 @@ def load_sound(filename):
     snd = pygame.mixer.Sound(path.join(path.dirname(__file__), "Sounds", filename))
     snd.set_volume(0.5)
     return snd
-
-
-def get_screen_pos(pos: list, step=0.0, oldpos: list = None, tick=0):
-    """Переводит старые и новые координаты в знакоместах в экранные координаты относительно текущего игрового тика"""
-    if oldpos is None:
-        return pos[1] * BLOCK_WIDTH, pos[0] * BLOCK_WIDTH
-
-    disp = step * tick
-    disp_x = (pos[1] - oldpos[1]) * disp
-    disp_y = (pos[0] - oldpos[0]) * disp
-    return oldpos[1] * BLOCK_WIDTH + disp_x, oldpos[0] * BLOCK_WIDTH + disp_y
 
 
 def init_screen(width, height):
@@ -119,13 +112,11 @@ def load_level(filename):
                                             animation_delay=random.randrange(int(animated[ch][2][0]),
                                                                              int(animated[ch][2][1]),
                                                                              int(animated[ch][2][2]))
-                                                if isinstance(animated[ch][2], (list, tuple))
-                                                else animated[ch][2],
+                                            if isinstance(animated[ch][2], (list, tuple)) else animated[ch][2],
                                             animation_pause=random.randrange(int(animated[ch][3][0]),
                                                                              int(animated[ch][3][1]),
                                                                              int(animated[ch][3][2]))
-                                                if isinstance(animated[ch][3], (list, tuple))
-                                                else animated[ch][3],
+                                            if isinstance(animated[ch][3], (list, tuple)) else animated[ch][3],
                                             hit_sound=load_sound(animated[ch][4]))
                     if ch in TREASURE_BLOCKS:
                         glTreasuresCount += 1
@@ -135,7 +126,9 @@ def load_level(filename):
                     glBeasts.append(character.Beast(monster, [row, col], subfolder=monster["folder"],
                                                     sounds=(None, None, load_sound(monster["dieSound"])),
                                                     idle_delay=monster["idle_delay"],
-                                                    fall_delay=monster["fall_delay"]))
+                                                    fall_delay=monster["fall_delay"],
+                                                    step=BEAST_STEP,
+                                                    animation_step=BEAST_ANIMATION_STEP))
 
                 # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                 if ch == 'I':
@@ -152,8 +145,11 @@ def load_level(filename):
 
     # Additional hidden line to avoid 'index out of range' errors
     static_layer.append(static_line)
+
+    converted = [[ch for ch in line] for line in static_layer]
+
     # Return tuple of layer in defined order
-    return static_layer, exit_layer
+    return [static_layer, exit_layer]
 
 
 def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
@@ -164,10 +160,10 @@ def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
         x = 0
         for blk in row:
             # Используем метод get. Он не выдаёт ошибок, если индекс отсутствует, а возвращает None, что удобнее
-            cur_block = sprites.get(blk)
+            cur_block: block.Block = sprites.get(blk)
 
             if cur_block is not None:
-                canvas.blit(cur_block.image, cur_block.image.get_rect(topleft=(x * BLOCK_WIDTH, y * BLOCK_WIDTH)))
+                cur_block.show(canvas, (x, y))
             x += 1
         y += 1
 
@@ -179,8 +175,7 @@ def collect_treasures(pos):
     for chb in character.TREASURE_BLOCKS:
         key = str(pos[0]) + ":" + str(pos[1]) + ":" + chb
         if key in glAnimatedEntities:
-            if glAnimatedEntities[key].hit_sound is not None:
-                glAnimatedEntities[key].hit_sound.play()
+            glAnimatedEntities[key].hit_sound is None or glAnimatedEntities[key].hit_sound.play()
             del glAnimatedEntities[key]
             glTreasuresCount -= 1
 
@@ -191,7 +186,7 @@ def collect_treasures(pos):
                 for line in glCurrentLevel[1]:
                     col = 0
                     for chx in line:
-                        glCurrentLevel[0][row][col] = chx if chx != '.' else glCurrentLevel[0][row][col]
+                        glCurrentLevel[0][row][col] = (glCurrentLevel[0][row][col], chx)[chx != '.']
                         col += 1
                     row += 1
 
@@ -302,14 +297,16 @@ glPlayer = character.Player(PLAYER_UNIT["animation"], subfolder=PLAYER_UNIT["fol
                                      GAME_OVER_USER_END: load_sound(PLAYER_UNIT["sounds"]["leave"]),
                                      }),
                             idle_delay=PLAYER_UNIT["idle_delay"],
-                            fall_delay=PLAYER_UNIT["fall_delay"])
+                            fall_delay=PLAYER_UNIT["fall_delay"],
+                            step=STEP,
+                            animation_step=PLAYER_ANIMATION_STEP)
 
 levelEnd_sound = load_sound("level end.wav")
 exitAppears_sound = load_sound("exit.wav")
 
-FailTitle = block.Block("Game over title.jpg", "Titles")
-WinTitle = block.Block("Win title.jpg", "Titles")
-IntroTitle = block.Block("Intro title.jpg", "Titles")
+FailTitle = block.Block("Game over title.jpg", subfolder="Titles")
+WinTitle = block.Block("Win title.jpg", subfolder="Titles")
+IntroTitle = block.Block("Intro title.jpg", subfolder="Titles")
 
 btRestart = block.Button(("Restart.jpg", "Restart pressed.jpg"), "Buttons", event=ACTION_RESTART,
                          key=(K_RETURN, K_KP_ENTER, K_SPACE))
@@ -388,6 +385,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         game_state.write(config_file)
 
     glCurrentLevel = load_level(path.join(levels_dir, levels_list[current_level]))
+    # Use module local var to avoid cross imports
     character.glCurrentLevel = glCurrentLevel
 
     glStaticCanvas = pygame.Surface(glMainCanvas.get_size())
@@ -402,13 +400,11 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     for i in range(8):
         glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
         for animBlock in glAnimatedEntities.values():
-            glMainCanvas.blit(animBlock.get_image(0), get_screen_pos(animBlock.pos))
+            animBlock.show(glMainCanvas, 0)
         if i % 2 == 0:
-            glMainCanvas.blit(glPlayer.get_image(0, STEP),
-                              get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, 0))
+            glPlayer.show(glMainCanvas, 0)
             for beast in glBeasts:
-                glMainCanvas.blit(beast.get_image(0, BEAST_STEP),
-                                  get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, 0))
+                beast.show(glMainCanvas, 0)
         pygame.display.update()
         glClock.tick(8)
 
@@ -452,13 +448,13 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # First -- non-movable level blocks with animation
         # ================================================
         for animBlock in glAnimatedEntities.values():
-            glMainCanvas.blit(animBlock.get_image(player_tick), get_screen_pos(animBlock.pos))
+            animBlock.show(glMainCanvas, player_tick)
 
         # ==================================================================
         # Second -- draw temporary items and do collision check if necessary
         # ==================================================================
         for tempBlock in glTemporaryItems:
-            glMainCanvas.blit(tempBlock.get_image(player_tick), get_screen_pos(tempBlock.pos))
+            tempBlock.show(glMainCanvas, player_tick)
             if tempBlock.died:
                 if tempBlock.underlay is not None:
                     # TODO Check, whether we can move block_killing_action to TemporaryBlock class
@@ -471,8 +467,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # ===========================
         # Third -- draw player sprite
         # ===========================
-        glMainCanvas.blit(glPlayer.get_image(player_tick, STEP),
-                          get_screen_pos(glPlayer.pos, PLAYER_ANIMATION_STEP, glPlayer.oldpos, player_tick))
+        glPlayer.show(glMainCanvas, player_tick)
 
         # ==================================================================
         # Fourth -- move all beasts and again do collision check with player
@@ -491,8 +486,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                         if glAnimatedEntities[key].hit_sound is not None:
                             glAnimatedEntities[key].hit_sound.play()
                         beast.die()
-            glMainCanvas.blit(beast.get_image(beast_tick, BEAST_STEP),
-                              get_screen_pos(beast.pos, BEAST_ANIMATION_STEP, beast.oldpos, beast_tick))
+            beast.show(glMainCanvas, beast_tick)
 
         # ==============================================================
         # And finally -- check characters for standing over deadly block

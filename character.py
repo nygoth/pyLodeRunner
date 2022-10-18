@@ -1,5 +1,6 @@
-# Модуль, реализующий персонажей на основе спрайтов игры.
-# Персонаж, это перемещающийся по уровню спрайт. Двигает его либо ИИ, либо пользователь вводом с клавиатуры
+""" Модуль, реализующий персонажей на основе спрайтов игры.
+  Персонаж, это перемещающийся по уровню спрайт. Двигает его либо ИИ, либо пользователь вводом с клавиатуры.
+"""
 
 # V 2.1
 import random
@@ -51,7 +52,14 @@ class Character(block.Block):
         А также -- проверка столкновений
     """
 
-    def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
+    def __init__(self, img,
+                 position: list = None,
+                 subfolder="",
+                 sounds: tuple = None,
+                 idle_delay=200,
+                 fall_delay=100,
+                 step=0,
+                 animation_step=0):
         self.pos = [0, 0] if position is None else position
         self.oldpos = self.pos
         self.move_direction = K_IDLE
@@ -59,21 +67,23 @@ class Character(block.Block):
         self.images = dict()
         self.delay = dict()
         self.delay[STATE_STAND] = idle_delay  # Idle and fall states are slower than moving states.
-        self.delay[STATE_HANG] = idle_delay  # So they uses different counters
+        self.delay[STATE_HANG] = idle_delay  # So they use different counters
         self.delay[STATE_FALL] = fall_delay
         self.current_ticks = 0
+        self.step = step
+        self.animation_step = animation_step
 
         (self.step_sound, self.attack_sound, self.die_sound) = ((None, None, None), sounds)[sounds is not None]
 
         # Load all images as an animation sets
-        super().__init__(None, subfolder)
+        super().__init__(None, position, subfolder)
         if isinstance(img, dict):
 
             for state in STATES.keys():
                 if state in img:
                     self.images[STATES[state]] = list()
                     for file in img[state]:
-                        self.images[STATES[state]].append(block.Block(file, subfolder))
+                        self.images[STATES[state]].append(block.Block(file, position, subfolder))
 
             # Let's duplicate and flip walking animation if absent
             self.__clone_animation__(STATES["walk_left"], STATES["walk_right"], True)
@@ -171,7 +181,7 @@ class Character(block.Block):
 
         return False
 
-    def get_image(self, tick, step):
+    def get_image(self, tick):
         if self.move_direction * self.move_state in self.images:
             if isinstance(self.images[self.move_direction * self.move_state], list):
                 frames = len(self.images[self.move_direction * self.move_state])
@@ -181,13 +191,17 @@ class Character(block.Block):
                     current_frame = int(self.current_ticks / (delay / frames))
                 else:
                     self.current_ticks = 0
-                    current_frame = int(tick / (step / frames))
+                    current_frame = int(tick / (self.step / frames))
 
                 return self.images[self.move_direction * self.move_state][current_frame].image
             else:
                 return self.images[self.move_direction + self.move_state].image
         else:
             return self.image
+
+    def show(self, canvas: pygame.Surface, tick):
+        canvas.blit(self.get_image(tick),
+                    self.get_screen_pos(self.animation_step, tick))
 
 
 class Beast(Character):
@@ -196,8 +210,15 @@ class Beast(Character):
         В общем случае, он стремится по кратчайшей траектории подойти к игроку.
     """
 
-    def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
-        super(Beast, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay)
+    def __init__(self, img,
+                 position=None,
+                 subfolder="",
+                 sounds: tuple = None,
+                 idle_delay=200,
+                 fall_delay=100,
+                 step=0,
+                 animation_step=0):
+        super(Beast, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay, step, animation_step)
         # Запоминаем позицию рождения для возрождения чудовища в исходном месте при его смерти
         self.spawn_pos = self.pos.copy()
         self.idioticy = 0
@@ -261,8 +282,18 @@ class Player(Character):
         Здесь происходит проверка клавиатурного ввода и передача команд на движение.
     """
 
-    def __init__(self, img, position=None, subfolder="", sounds: tuple = None, idle_delay=200, fall_delay=100):
-        super(Player, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay)
+    def __init__(self, img,
+                 position=None,
+                 subfolder="",
+                 sounds: tuple = None,
+                 idle_delay=200,
+                 fall_delay=100,
+                 step=0,
+                 animation_step=0):
+        super(Player, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay, step, animation_step)
+        # TODO Все временные блоки, ассоциированные с разрушаемыми, должны читаться и создаваться
+        # TODO где-то вне. А при атаке игрока должен вставляться именно тот блок, который соответствует
+        # TODO разрушаемому.
         cracked = BLOCKS["temporary"][BLOCKS["static"]["Z"][1]]
         self.cracked_block = block.TemporaryBlock(cracked,
                                                   subfolder="Animation", animation_delay=cracked[2] / 100,
