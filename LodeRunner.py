@@ -141,7 +141,7 @@ def load_level(filename):
     static_layer.append(static_line)
 
     # Return list of layer in defined order
-    return [static_layer, exit_layer]
+    return static_layer, exit_layer
 
 
 # TODO Стоит переделать этот код, чтобы хранить уровень, как список спрайтов, которым уже заданы нужные координаты.
@@ -178,6 +178,7 @@ def collect_treasures(pos):
                 exitAppears_sound.play()
                 glLevel = [[elem[elem[1] != '.'] for elem in zip(level_row[0], level_row[1])]
                                      for level_row in zip(glLevel, glExit)]
+                character.glLevel = glLevel
                 show_layer(glStaticCanvas, glLevel, STATIC_BLOCKS)
 
 
@@ -383,8 +384,6 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     # Pause 1,5 sec for user to look around new level
     # Beasts, treasures and player are blinking at this time
     #
-    # TODO Перенести всю графику в класс Block. Туда же get_screen_pos и прочее. Чтобы этот кусок кода, по сути
-    # TODO был просто вызовом show для соответствующего объекта
     for i in range(8):
         glMainCanvas.blit(glStaticCanvas, glStaticCanvas.get_rect())
         for animBlock in glAnimatedEntities.values():
