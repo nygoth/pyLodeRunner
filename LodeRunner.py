@@ -75,6 +75,11 @@ def init_screen(width, height):
     return scr
 
 
+def to_number(val):
+    """Return random number from provided range or value itself"""
+    return random.randrange(int(val[0]), int(val[1]), int(val[2])) if isinstance(val, (list, tuple)) else val
+
+
 def load_level(filename):
     """Загружает игровой уровень. Создаёт всю необходимую структуру и динамические объекты"""
     global glTreasuresCount
@@ -99,27 +104,16 @@ def load_level(filename):
             # Цикл по отдельным символам строки. Добавляем один символ, чтобы не писать в коде лишних проверок
             # на выход за границы массива
             for ch in line[0:LEVEL_WIDTH + 1]:
-                if ch in EXIT_BLOCKS:
-                    exit_line.append(ch)
-                    ch = '.'
-                else:
-                    exit_line.append('.')
+                exit_line.append(('.', ch)[ch in EXIT_BLOCKS])
 
                 if ch in animated:
                     glAnimatedEntities[str(row) + ":" + str(col) + ":" + ch] = \
                         block.AnimatedBlock(animated[ch][1], [row, col],
                                             subfolder=animated[ch][0],
-                                            animation_delay=random.randrange(int(animated[ch][2][0]),
-                                                                             int(animated[ch][2][1]),
-                                                                             int(animated[ch][2][2]))
-                                            if isinstance(animated[ch][2], (list, tuple)) else animated[ch][2],
-                                            animation_pause=random.randrange(int(animated[ch][3][0]),
-                                                                             int(animated[ch][3][1]),
-                                                                             int(animated[ch][3][2]))
-                                            if isinstance(animated[ch][3], (list, tuple)) else animated[ch][3],
+                                            animation_delay=to_number(animated[ch][2]),
+                                            animation_pause=to_number(animated[ch][3]),
                                             hit_sound=load_sound(animated[ch][4]))
-                    if ch in TREASURE_BLOCKS:
-                        glTreasuresCount += 1
+                    glTreasuresCount += (ch in TREASURE_BLOCKS)
 
                 if ch in BEAST_BLOCKS:
                     monster = BEAST_UNITS[ch]
@@ -135,7 +129,7 @@ def load_level(filename):
                     glPlayer.pos = [row, col]
                     glPlayer.oldpos = [row, col]
 
-                static_line.append(('.', ch)[ch in MAPPED_BLOCKS])
+                static_line.append(('.', ch)[ch in MAPPED_BLOCKS and ch not in EXIT_BLOCKS])
                 col += 1
 
             static_layer.append(static_line)
@@ -146,12 +140,12 @@ def load_level(filename):
     # Additional hidden line to avoid 'index out of range' errors
     static_layer.append(static_line)
 
-    converted = [[ch for ch in line] for line in static_layer]
-
-    # Return tuple of layer in defined order
+    # Return list of layer in defined order
     return [static_layer, exit_layer]
 
 
+# TODO Стоит переделать этот код, чтобы хранить уровень, как список спрайтов, которым уже заданы нужные координаты.
+# TODO Тогда отрисовка будет простым перебором спрайтов. Но это после выноса кода уровня в отдельный класс.
 def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
     """Процедура для рисования статичной части уровня на экране"""
     y = 0
@@ -170,7 +164,7 @@ def show_layer(canvas: pygame.Surface, level: list, sprites: dict) -> None:
 
 def collect_treasures(pos):
     """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""
-    global glTreasuresCount
+    global glTreasuresCount, glLevel, glExit
 
     for chb in character.TREASURE_BLOCKS:
         key = str(pos[0]) + ":" + str(pos[1]) + ":" + chb
@@ -182,23 +176,17 @@ def collect_treasures(pos):
             # Все сокровища собраны, готовим выход
             if glTreasuresCount <= 0:
                 exitAppears_sound.play()
-                row = 0
-                for line in glCurrentLevel[1]:
-                    col = 0
-                    for chx in line:
-                        glCurrentLevel[0][row][col] = (glCurrentLevel[0][row][col], chx)[chx != '.']
-                        col += 1
-                    row += 1
-
-                show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
+                glLevel = [[elem[elem[1] != '.'] for elem in zip(level_row[0], level_row[1])]
+                                     for level_row in zip(glLevel, glExit)]
+                show_layer(glStaticCanvas, glLevel, STATIC_BLOCKS)
 
 
 def block_killing_action(blk: block):
     """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
-    if glPlayer.pos[0] == blk.pos[0] and glPlayer.pos[1] == blk.pos[1]:
+    if glPlayer.pos == blk.pos:
         return False
     for monster in glBeasts:
-        if monster.pos[0] == blk.pos[0] and monster.pos[1] == blk.pos[1]:
+        if monster.pos == blk.pos:
             monster.die()
     return True
 
@@ -212,8 +200,7 @@ def game_over(reason: int):
     # Если игрок уровень проиграл, то нужно воспроизвести соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
     if reason != GAME_OVER_COMPLETE:
-        if glPlayer.die_sound is not None:
-            glPlayer.die_sound[reason].play()
+        glPlayer.die_sound is None or glPlayer.die_sound[reason].play()
         glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(center=(scr_halfwidth, scr_halfheight)))
 
         btRestart.rect = btRestart.image.get_rect(
@@ -384,12 +371,12 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     with open(GAME_STATE_FILE, "w") as config_file:
         game_state.write(config_file)
 
-    glCurrentLevel = load_level(path.join(levels_dir, levels_list[current_level]))
+    glLevel, glExit = load_level(path.join(levels_dir, levels_list[current_level]))
     # Use module local var to avoid cross imports
-    character.glCurrentLevel = glCurrentLevel
+    character.glLevel = glLevel
 
     glStaticCanvas = pygame.Surface(glMainCanvas.get_size())
-    show_layer(glStaticCanvas, glCurrentLevel[0], STATIC_BLOCKS)
+    show_layer(glStaticCanvas, glLevel, STATIC_BLOCKS)
 
     #
     # Pause 1,5 sec for user to look around new level
@@ -461,7 +448,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                     if not block_killing_action(tempBlock):
                         game_over_reason = GAME_OVER_STUCK
                         running = False
-                    glCurrentLevel[0][tempBlock.pos[0]][tempBlock.pos[1]] = tempBlock.underlay
+                    glLevel[tempBlock.pos[0]][tempBlock.pos[1]] = tempBlock.underlay
                 del glTemporaryItems[glTemporaryItems.index(tempBlock)]
 
         # ===========================
@@ -480,9 +467,9 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                     running = False
                     game_over_reason = GAME_OVER_EATEN
                 else:
-                    if glCurrentLevel[0][beast.oldpos[0]][beast.oldpos[1]] in character.DEADLY_BLOCKS:
+                    if glLevel[beast.oldpos[0]][beast.oldpos[1]] in character.DEADLY_BLOCKS:
                         key = str(beast.oldpos[0]) + ":" + str(beast.oldpos[1]) + ":" + \
-                              str(glCurrentLevel[0][beast.oldpos[0]][beast.oldpos[1]])
+                              str(glLevel[beast.oldpos[0]][beast.oldpos[1]])
                         if glAnimatedEntities[key].hit_sound is not None:
                             glAnimatedEntities[key].hit_sound.play()
                         beast.die()
@@ -491,9 +478,9 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # ==============================================================
         # And finally -- check characters for standing over deadly block
         # ==============================================================
-        if glCurrentLevel[0][glPlayer.oldpos[0]][glPlayer.oldpos[1]] in character.DEADLY_BLOCKS:
+        if glLevel[glPlayer.oldpos[0]][glPlayer.oldpos[1]] in character.DEADLY_BLOCKS:
             key = str(glPlayer.oldpos[0]) + ":" + str(glPlayer.oldpos[1]) + ":" + \
-                  str(glCurrentLevel[0][glPlayer.oldpos[0]][glPlayer.oldpos[1]])
+                  str(glLevel[glPlayer.oldpos[0]][glPlayer.oldpos[1]])
             if glAnimatedEntities[key].hit_sound is not None:
                 glAnimatedEntities[key].hit_sound.play()
             running = False
