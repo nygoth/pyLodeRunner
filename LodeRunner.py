@@ -256,6 +256,7 @@ def game_over(reason: int):
 config = configparser.ConfigParser()
 game_state = configparser.ConfigParser()
 
+# TODO Надо делать класс config, и через экземпляр этого класса проводить инициализацию конфмгурации.
 current_level, current_song = init_config(game_state, config)
 
 FPS = TEMPO * STEP
