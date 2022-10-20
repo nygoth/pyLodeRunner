@@ -8,7 +8,7 @@ import random
 import pygame
 from pygame.locals import *
 import block
-from game_structure import *
+import CC
 
 K_IDLE = 1
 STATE_FALL = 10
@@ -124,7 +124,7 @@ class Character(block.Block):
             z = state1
 
     def __set_state__(self):
-        self.move_state = (STATE_STAND, STATE_HANG)[glLevel[self.pos[0]][self.pos[1]] in HANG_BLOCKS]
+        self.move_state = (STATE_STAND, STATE_HANG)[glLevel[self.pos[0]][self.pos[1]] in CC.HANG_BLOCKS]
 
     @staticmethod
     def __in_obstacle__(obstacles: list, pos: tuple):
@@ -142,8 +142,8 @@ class Character(block.Block):
         self.__set_state__()
 
         if check_bounds((self.pos[0] + 1, self.pos[1])):
-            if glLevel[self.pos[0] + 1][self.pos[1]] not in SUPPORT_BLOCKS and \
-                    glLevel[self.pos[0]][self.pos[1]] not in CARRY_BLOCKS and \
+            if glLevel[self.pos[0] + 1][self.pos[1]] not in CC.SUPPORT_BLOCKS and \
+                    glLevel[self.pos[0]][self.pos[1]] not in CC.CARRY_BLOCKS and \
                     not self.__in_obstacle__(obstacles, (self.pos[0] + 1, self.pos[1])):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
@@ -160,10 +160,10 @@ class Character(block.Block):
         if disp[0] != 0 and disp[1] != 0:
             return False  # Character can not move in two directions simultaneously
 
-        if glLevel[self.pos[0] + disp[0]][self.pos[1] + disp[1]] in SOLID_BLOCKS:
+        if glLevel[self.pos[0] + disp[0]][self.pos[1] + disp[1]] in CC.SOLID_BLOCKS:
             return False  # Impossible movement, block in the way
 
-        if disp[0] == -1 and glLevel[self.pos[0]][self.pos[1]] not in CLIMB_BLOCKS:
+        if disp[0] == -1 and glLevel[self.pos[0]][self.pos[1]] not in CC.CLIMB_BLOCKS:
             return False  # Impossible to move up
 
         if obstacles is not None and self.__in_obstacle__(obstacles, (self.pos[0] + disp[0], self.pos[1] + disp[1])):
@@ -294,7 +294,7 @@ class Player(Character):
         # TODO Все временные блоки, ассоциированные с разрушаемыми, должны читаться и создаваться
         # TODO где-то вне. А при атаке игрока должен вставляться именно тот блок, который соответствует
         # TODO разрушаемому.
-        cracked = BLOCKS["temporary"][BLOCKS["static"]["Z"][1]]
+        cracked = CC.BLOCKS["temporary"][CC.BLOCKS["static"]["Z"][1]]
         self.cracked_block = block.TemporaryBlock(cracked,
                                                   subfolder="Animation", animation_delay=cracked[2] / 100,
                                                   animation_pause=cracked[2])
@@ -318,9 +318,9 @@ class Player(Character):
                   K_w: ("attack_right", +1)}
         for key in attack:
             if pressed_keys[key]:
-                if 0 <= self.pos[1] + attack[key][1] < LEVEL_WIDTH and \
+                if 0 <= self.pos[1] + attack[key][1] < CC.LEVEL_WIDTH and \
                         glLevel[self.pos[0]][self.pos[1] + attack[key][1]] == '.' and \
-                        glLevel[self.pos[0] + 1][self.pos[1] + attack[key][1]] in DESTRUCTABLE_BLOCKS:
+                        glLevel[self.pos[0] + 1][self.pos[1] + attack[key][1]] in CC.DESTRUCTABLE_BLOCKS:
                     self.attack_sound is not None and self.attack_sound.play()
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
@@ -343,8 +343,8 @@ class Player(Character):
 
 def check_bounds(pos: tuple):
     """Return true, if provided position within screen bounds, else false"""
-    if 0 <= pos[1] < LEVEL_WIDTH and \
-            0 <= pos[0] < LEVEL_HEIGHT:
+    if 0 <= pos[1] < CC.LEVEL_WIDTH and \
+            0 <= pos[0] < CC.LEVEL_HEIGHT:
         return True
     return False
 

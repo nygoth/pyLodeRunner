@@ -12,7 +12,7 @@
 
 from os import path
 import pygame
-from game_structure import BLOCK_WIDTH
+import CC
 
 
 class Block(pygame.sprite.Sprite):
@@ -30,7 +30,7 @@ class Block(pygame.sprite.Sprite):
             if isinstance(img, Block):
                 self.image = img.image
         else:
-            self.image = pygame.Surface((BLOCK_WIDTH, BLOCK_WIDTH))
+            self.image = pygame.Surface((CC.BLOCK_WIDTH, CC.BLOCK_WIDTH))
             self.image.fill((255, 255, 0))
 
         self.size = self.image.get_size()
@@ -51,16 +51,16 @@ class Block(pygame.sprite.Sprite):
     def get_screen_pos(self, step=0.0, tick=0):
         """Переводит старую и новую позицию в знакоместах в экранные координаты относительно текущего игрового тика"""
         if self.oldpos is None:
-            return self.pos[1] * BLOCK_WIDTH, self.pos[0] * BLOCK_WIDTH
+            return self.pos[1] * CC.BLOCK_WIDTH, self.pos[0] * CC.BLOCK_WIDTH
 
         disp = step * tick
         disp_x = (self.pos[1] - self.oldpos[1]) * disp
         disp_y = (self.pos[0] - self.oldpos[0]) * disp
-        return self.oldpos[1] * BLOCK_WIDTH + disp_x, self.oldpos[0] * BLOCK_WIDTH + disp_y
+        return self.oldpos[1] * CC.BLOCK_WIDTH + disp_x, self.oldpos[0] * CC.BLOCK_WIDTH + disp_y
 
     def show(self, canvas: pygame.Surface, pos: tuple):
         """Рисование спрайта в заданных координатах сетки на заданной канве"""
-        canvas.blit(self.image, self.image.get_rect(topleft=(pos[0] * BLOCK_WIDTH, pos[1] * BLOCK_WIDTH)))
+        canvas.blit(self.image, self.image.get_rect(topleft=(pos[0] * CC.BLOCK_WIDTH, pos[1] * CC.BLOCK_WIDTH)))
 
 
 class Button(Block):
