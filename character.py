@@ -126,8 +126,9 @@ class Character(block.Block):
         self.move_state = (STATE_STAND, STATE_HANG)[level.glLevel[self.pos] in CC.HANG_BLOCKS]
 
     @staticmethod
-    def __in_obstacle__(obstacles: list, pos):
+    def __in_obstacle__(obstacles: list, pos: list):
         if obstacles is not None:
+            obst: Character
             for obst in obstacles:
                 if pos == obst.pos:
                     return True
@@ -143,7 +144,7 @@ class Character(block.Block):
         if check_bounds((self.pos[0] + 1, self.pos[1])):
             if level.glLevel[(self.pos[0] + 1, self.pos[1])] not in CC.SUPPORT_BLOCKS and \
                     level.glLevel[(self.pos[0], self.pos[1])] not in CC.CARRY_BLOCKS and \
-                    not self.__in_obstacle__(obstacles, (self.pos[0] + 1, self.pos[1])):
+                    not self.__in_obstacle__(obstacles, [self.pos[0] + 1, self.pos[1]]):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
                 self.move_direction = K_IDLE

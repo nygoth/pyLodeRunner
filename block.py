@@ -20,7 +20,7 @@ class Block(pygame.sprite.Sprite):
 
     def __init__(self, img, position: list = None, subfolder=""):
         super().__init__()
-        self.pos = [0, 0] if position is None else position
+        self.pos = list() if position is None else position
         self.oldpos = None
         self.base_images_folder = path.join(path.dirname(__file__), "images", subfolder)
 

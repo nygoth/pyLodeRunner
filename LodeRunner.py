@@ -67,7 +67,7 @@ def block_killing_action(blk: block):
     """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
     if glPlayer.pos == blk.pos:
         return False
-    for monster in glBeasts:
+    for monster in level.glLevel.beasts:
         if monster.pos == blk.pos:
             monster.die()
     return True
@@ -279,7 +279,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # Do player movement and collisions check
         # =======================================
         if player_tick == 0:
-            running = glPlayer.move(glBeasts, temporary_items=glTemporaryItems)
+            running = glPlayer.move(level.glLevel.beasts, temporary_items=glTemporaryItems)
             if not running:
                 game_over_reason = GAME_OVER_EATEN
             else:
