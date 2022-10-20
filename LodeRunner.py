@@ -40,10 +40,11 @@ import level
 from glb import *
 
 # Статусы завершения игры
-GAME_OVER_COMPLETE = 0  # Уровень пройден
-GAME_OVER_EATEN = 1  # Игрока съели
-GAME_OVER_STUCK = 2  # Игрок застрял в разрушенном блоке
-GAME_OVER_KILLED = 3  # Игрок убит в смертельном блоке
+GAME_OVER_NOT_OVER = 0  # Игра продолжается
+GAME_OVER_COMPLETE = 1  # Уровень пройден
+GAME_OVER_EATEN = 2  # Игрока съели
+GAME_OVER_STUCK = 3  # Игрок застрял в разрушенном блоке
+GAME_OVER_KILLED = 4  # Игрок убит в смертельном блоке
 GAME_OVER_USER_END = 100  # Пользователь хочет закрыть программу
 
 # What next after level end (fail or win)
@@ -172,12 +173,11 @@ btQuit = block.Button(("Quit.jpg", "Quit pressed.jpg"), "Buttons", event=ACTION_
 btNext = block.Button(("Next.jpg", "Next pressed.jpg"), "Buttons", event=ACTION_NEXT,
                       key=(K_RETURN, K_KP_ENTER, K_SPACE))
 
-game_over_reason = GAME_OVER_COMPLETE
 whatNext = ACTION_NEXT
 
-#
+# ============
 # Intro screen
-#
+# ============
 
 glMainCanvas.blit(IntroTitle.image, IntroTitle.image.get_rect(center=(CC.LEVEL_WIDTH * CC.BLOCK_WIDTH / 2,
                                                                       CC.LEVEL_HEIGHT * CC.BLOCK_WIDTH / 2)))
@@ -204,12 +204,13 @@ pygame.mixer.music.stop()
 # And music
 (music_dir, _, songs_list) = next(walk(path.join(path.dirname(__file__), "Music")), (None, None, []))
 
-#
+# ========================================
 # Game loop itself
 #
-# С этого момента начинается специфическая для уровня инициализация, загрузка
-# и игровой цикл
-#
+# С этого момента начинается специфическая
+# для уровня инициализация, загрузка и
+# игровой цикл
+# ========================================
 
 while whatNext in (ACTION_NEXT, ACTION_RESTART):
     glTemporaryItems = list()
@@ -250,13 +251,13 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         pygame.display.update()
         glClock.tick(8)
 
-    running = True
+    game_over_reason = GAME_OVER_NOT_OVER
     player_tick = beast_tick = 0
 
     # =================================================================================================
     # Game lifecycle
     # =================================================================================================
-    while running:
+    while game_over_reason == GAME_OVER_NOT_OVER:
         # =================================
         # Actions on user interrupt attempt
         # =================================
@@ -264,7 +265,6 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
             if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
                 whatNext = ACTION_QUIT
                 game_over_reason = GAME_OVER_USER_END
-                running = False
 
         # =====================
         # Erasing old animation
@@ -275,14 +275,13 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # Do player movement and collisions check
         # =======================================
         if player_tick == 0:
-            running = glPlayer.move(level.glLevel.beasts, glTemporaryItems)
-            if not running:
+            if not glPlayer.move(level.glLevel.beasts, glTemporaryItems):
                 game_over_reason = GAME_OVER_EATEN
             else:
                 level.glLevel.collect_treasures(glPlayer.oldpos)
-            if glPlayer.oldpos[0] == 0 and running:
+
+            if glPlayer.oldpos[0] == 0:
                 game_over_reason = GAME_OVER_COMPLETE
-                running = False
 
         # ================================================
         # Drawing items in their positions
@@ -300,7 +299,6 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                     # TODO Check, whether we can move block_killing_action to TemporaryBlock class
                     if not block_killing_action(tempBlock):
                         game_over_reason = GAME_OVER_STUCK
-                        running = False
                     level.glLevel[tempBlock.pos] = tempBlock.underlay
                 del glTemporaryItems[glTemporaryItems.index(tempBlock)]
 
@@ -313,10 +311,8 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # Fourth -- move all beasts and again do collision check with player
         #           More than, check player collision with deadly blocks
         # ==================================================================
-        problem = level.glLevel.live(glPlayer, beast_tick)
-        if problem:
-            running = False
-            game_over_reason = (GAME_OVER_EATEN, GAME_OVER_KILLED)[problem - 1]
+        game_over_reason = \
+            (game_over_reason, GAME_OVER_EATEN, GAME_OVER_KILLED)[level.glLevel.live(glPlayer, beast_tick)]
 
         player_tick = (0, player_tick + 1)[player_tick < CC.STEP - 1]
         beast_tick = (0, beast_tick + 1)[beast_tick < CC.BEAST_STEP - 1]
