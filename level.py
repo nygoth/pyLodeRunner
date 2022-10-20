@@ -1,4 +1,4 @@
-"""Level class for managin level data and do all other needful things for levels"""
+"""Level class for managing level data and do all other needful things for levels"""
 
 import pygame
 from pygame.locals import *
@@ -68,23 +68,19 @@ class Level:
         self.treasures_count = 0
 
         with open(filename, 'r') as lvl_stream:
-            row = 0
-
             animated = CC.BLOCKS["animated"]
             # Цикл по строкам файла
-            for line in lvl_stream:
+            for line, row in zip(lvl_stream, range(CC.LEVEL_HEIGHT + 1)):
                 static_line = list()
                 exit_line = list()
 
-                col = 0
-
                 # Цикл по отдельным символам строки. Добавляем один символ, чтобы не писать в коде лишних проверок
                 # на выход за границы массива
-                for ch in line[0:CC.LEVEL_WIDTH + 1]:
+                for ch, col in zip(line[0:CC.LEVEL_WIDTH + 1], range(CC.LEVEL_WIDTH + 1)):
                     exit_line.append(('.', ch)[ch in CC.EXIT_BLOCKS])
 
                     if ch in animated:
-                        self.animated_entities[str(row) + ":" + str(col) + ":" + ch] = \
+                        self.animated_entities[str([row, col]) + ":" + ch] = \
                             block.AnimatedBlock(animated[ch][1], [row, col],
                                                 subfolder=animated[ch][0],
                                                 animation_delay=to_number(animated[ch][2]),
@@ -107,12 +103,9 @@ class Level:
                         player.oldpos = [row, col]
 
                     static_line.append(('.', ch)[ch in CC.MAPPED_BLOCKS and ch not in CC.EXIT_BLOCKS])
-                    col += 1
 
                 self.level.append(static_line)
                 self.exit.append(exit_line)
-
-                row += 1
 
         # Additional hidden line to avoid 'index out of range' errors
         self.level.append(static_line)
@@ -121,20 +114,19 @@ class Level:
         # Return true if success
         return True
 
-    # TODO Стоит переделать этот код, чтобы хранить уровень, как список спрайтов, которым уже заданы нужные координаты.
-    # TODO Тогда отрисовка будет простым перебором спрайтов. Но это после выноса кода уровня в отдельный класс.
     def prepare_static(self, canvas: pygame.Surface = None) -> None:
         """Процедура подготовки статичной части уровня для отрисовки.
             Рисует статичные блоки на заранее подготовленной канве."""
         canvas = (self.static_image, canvas)[canvas is not None]
         if canvas is None:
             return
+
+        canvas.fill((0, 0, 0))
         for row, y in zip(self.level, range(CC.LEVEL_HEIGHT + 1)):
             for blk, x in zip(row, range(CC.LEVEL_WIDTH + 1)):
                 # Используем метод get. Он не выдаёт ошибок, если индекс отсутствует, а возвращает None, что удобнее
                 cur_block: block.Block = self.sprites.get(blk)
-                if cur_block is not None:
-                    cur_block.show(canvas, (x, y))
+                cur_block is None or cur_block.show(canvas, (x, y))
 
     def show_static(self, canvas: pygame.Surface = None):
         """Переносит заранее нарисованную статичную часть уровня на заданную канву."""
@@ -162,10 +154,10 @@ class Level:
     def show(self, canvas: pygame.Surface = None, tick=0):
         """Рисует всю графику, ассоциированную с уровнем"""
         self.show_static(canvas)
-        self.show_animated(canvas, tick)
-        self.show_beasts(canvas, tick)
+        self.show_animated(tick, canvas)
+        self.show_beasts(tick, canvas)
 
-    def live(self, player, tick=0) -> bool:
+    def live(self, player, tick=0) -> int:
         """Жизненный цикл уровня. Монстры бегут к игроку, кушают его и умирают, если попадут в ловушку.
             Монстры отрисовываются."""
         for beast in self.beasts:
@@ -173,19 +165,25 @@ class Level:
                 # Метод возвращает ложь, если монстр оказался в позиции игрока
                 # В нашей ситуации это означает съедение
                 if not beast.move(player.pos, self.beasts):
-                    return False
+                    beast.show(self.canvas, tick)
+                    return 1
                 else:
                     if self[beast.oldpos] in CC.DEADLY_BLOCKS:
-                        key = str(beast.oldpos[0]) + ":" + str(beast.oldpos[1]) + ":" + str(self[beast.oldpos])
+                        key = str(beast.oldpos) + ":" + str(self[beast.oldpos])
                         self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
                         beast.die()
             beast.show(self.canvas, tick)
-        return True
+        # Проверка, умер ли игрок на смертельном поле
+        if self[player.oldpos] in CC.DEADLY_BLOCKS:
+            key = str(player.oldpos) + ":" + str(self[player.oldpos])
+            self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
+            return 2
+        return 0
 
-    def collect_treasures(self, pos):
+    def collect_treasures(self, player_pos):
         """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""
         for chb in CC.TREASURE_BLOCKS:
-            key = str(pos[0]) + ":" + str(pos[1]) + ":" + chb
+            key = str(player_pos) + ":" + chb
             if key in self.animated_entities:
                 self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
                 del self.animated_entities[key]
@@ -196,6 +194,7 @@ class Level:
                     self.exit_appears_sound.play()
                     self.level = [[elem[elem[1] != '.'] for elem in zip(level_row[0], level_row[1])]
                                   for level_row in zip(self.level, self.exit)]
+                    self.prepare_static()
                     self.show_static()
 
     def __getitem__(self, item):

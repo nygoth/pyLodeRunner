@@ -7,7 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/.git (1)" />
       <excludePattern pattern="*.ini" />
     </content>
-    <orderEntry type="jdk" jdkName="Python 3.10 (pyLodeRunner)" jdkType="Python SDK" />
+    <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
 </module>

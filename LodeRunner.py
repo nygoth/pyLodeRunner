@@ -179,9 +179,8 @@ whatNext = ACTION_NEXT
 # Intro screen
 #
 
-glMainCanvas.blit(IntroTitle.image,
-                  IntroTitle.image.get_rect(center=(CC.LEVEL_WIDTH * CC.BLOCK_WIDTH / 2,
-                                                    CC.LEVEL_HEIGHT * CC.BLOCK_WIDTH / 2)))
+glMainCanvas.blit(IntroTitle.image, IntroTitle.image.get_rect(center=(CC.LEVEL_WIDTH * CC.BLOCK_WIDTH / 2,
+                                                                      CC.LEVEL_HEIGHT * CC.BLOCK_WIDTH / 2)))
 pygame.display.update()
 
 pygame.mixer.music.load(path.join(path.dirname(__file__), "Sounds", "INTRO.mp3"))
@@ -213,8 +212,6 @@ pygame.mixer.music.stop()
 #
 
 while whatNext in (ACTION_NEXT, ACTION_RESTART):
-    glBeasts = list()
-    glAnimatedEntities = dict()
     glTemporaryItems = list()
 
     level.glLevel.exit_appears_sound.stop()
@@ -264,8 +261,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # Actions on user interrupt attempt
         # =================================
         for event in pygame.event.get():
-            if event.type == QUIT or \
-                    (event.type == KEYUP and event.key == K_ESCAPE):
+            if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
                 whatNext = ACTION_QUIT
                 game_over_reason = GAME_OVER_USER_END
                 running = False
@@ -279,7 +275,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # Do player movement and collisions check
         # =======================================
         if player_tick == 0:
-            running = glPlayer.move(level.glLevel.beasts, temporary_items=glTemporaryItems)
+            running = glPlayer.move(level.glLevel.beasts, glTemporaryItems)
             if not running:
                 game_over_reason = GAME_OVER_EATEN
             else:
@@ -315,20 +311,12 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
 
         # ==================================================================
         # Fourth -- move all beasts and again do collision check with player
+        #           More than, check player collision with deadly blocks
         # ==================================================================
-        if not level.glLevel.live(glPlayer, beast_tick):
+        problem = level.glLevel.live(glPlayer, beast_tick)
+        if problem:
             running = False
-            game_over_reason = GAME_OVER_EATEN
-
-        # ==============================================================
-        # And finally -- check characters for standing over deadly block
-        # ==============================================================
-        if level.glLevel[glPlayer.oldpos] in CC.DEADLY_BLOCKS:
-            key = str(glPlayer.oldpos[0]) + ":" + str(glPlayer.oldpos[1]) + ":" + str(level.glLevel[glPlayer.oldpos])
-            level.glLevel.animated_entities[key].hit_sound is None or \
-                level.glLevel.animated_entities[key].hit_sound.play()
-            running = False
-            game_over_reason = GAME_OVER_KILLED
+            game_over_reason = (GAME_OVER_EATEN, GAME_OVER_KILLED)[problem - 1]
 
         player_tick = (0, player_tick + 1)[player_tick < CC.STEP - 1]
         beast_tick = (0, beast_tick + 1)[beast_tick < CC.BEAST_STEP - 1]

@@ -308,9 +308,10 @@ class Player(Character):
             self.move_direction = K_IDLE
             return True
 
-        for obstacle in obstacles:
-            if self.pos == obstacle.pos:
-                return False
+        if obstacles is not None:
+            for obstacle in obstacles:
+                if self.pos == obstacle.pos:
+                    return False
 
         attack = {K_q: ("attack_left", -1),
                   K_w: ("attack_right", +1)}
