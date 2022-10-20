@@ -35,6 +35,12 @@ BEAST_TEMPO = 8
 Если эти значения совпадают со значениями игрока, монстры перемещаются с его скоростью.
 Изменяя эти значения можно добиться либо замедления, либо ускорения монстров относительно игрока.
 """
+
+FPS = TEMPO * STEP
+BEAST_STEP = int(FPS / BEAST_TEMPO)
+BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
+PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
+
 # Спрайты блоков структуры уровня
 # Статичные блоки описываются картинкой и опциональной ссылкой на временный блок, который используется,
 # если с этим элементом что-то делают. Например, игрок может разрушать какие-то блоки. Причём, можно запрограммировать
@@ -320,8 +326,8 @@ MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + 
 
 def init_config(game_state, config, defaults: tuple = (-1, -1)):
     """Загрузка или установка конфигурации по умолчанию и создание файлов конфигурации"""
-    global BLOCKS, PLAYER_UNIT, BLOCK_WIDTH
-    global BEAST_UNITS, LEVEL_HEIGHT, LEVEL_WIDTH, STEP, TEMPO, BEAST_TEMPO
+    global BLOCKS, PLAYER_UNIT, BLOCK_WIDTH, FPS, BEAST_STEP, PLAYER_ANIMATION_STEP
+    global BEAST_UNITS, LEVEL_HEIGHT, LEVEL_WIDTH, STEP, TEMPO, BEAST_TEMPO, BEAST_ANIMATION_STEP
     global SOLID_BLOCKS, DESTRUCTABLE_BLOCKS, SUPPORT_BLOCKS, CARRY_BLOCKS, HANG_BLOCKS, CLIMB_BLOCKS
     global VIRTUAL_BLOCKS, TREASURE_BLOCKS, EXIT_BLOCKS, BEAST_BLOCKS, DEADLY_BLOCKS, MAPPED_BLOCKS
 
@@ -378,6 +384,10 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
             config.get("Structure", "DEADLY BLOCKS", fallback=json.dumps(DEADLY_BLOCKS)).replace("'", "\""))
 
         MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
+        FPS = TEMPO * STEP
+        BEAST_STEP = int(FPS / BEAST_TEMPO)
+        BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
+        PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
     else:
         config.add_section("Game")
         config.add_section("Geometry")

@@ -9,6 +9,7 @@ import pygame
 from pygame.locals import *
 import block
 import CC
+import level
 
 K_IDLE = 1
 STATE_FALL = 10
@@ -41,8 +42,6 @@ ANTIMOTION = {K_LEFT: K_RIGHT,
 
 # Обратный словарь к MOTION. Нужен для поиска команды по известному шагу
 I_MOTION = dict(zip(MOTION.values(), MOTION.keys()))
-
-glLevel = list()
 
 
 class Character(block.Block):
@@ -124,13 +123,13 @@ class Character(block.Block):
             z = state1
 
     def __set_state__(self):
-        self.move_state = (STATE_STAND, STATE_HANG)[glLevel[self.pos[0]][self.pos[1]] in CC.HANG_BLOCKS]
+        self.move_state = (STATE_STAND, STATE_HANG)[level.glLevel[self.pos] in CC.HANG_BLOCKS]
 
     @staticmethod
-    def __in_obstacle__(obstacles: list, pos: tuple):
+    def __in_obstacle__(obstacles: list, pos):
         if obstacles is not None:
             for obst in obstacles:
-                if pos[0] == obst.pos[0] and pos[1] == obst.pos[1]:
+                if pos == obst.pos:
                     return True
         return False
 
@@ -142,8 +141,8 @@ class Character(block.Block):
         self.__set_state__()
 
         if check_bounds((self.pos[0] + 1, self.pos[1])):
-            if glLevel[self.pos[0] + 1][self.pos[1]] not in CC.SUPPORT_BLOCKS and \
-                    glLevel[self.pos[0]][self.pos[1]] not in CC.CARRY_BLOCKS and \
+            if level.glLevel[(self.pos[0] + 1, self.pos[1])] not in CC.SUPPORT_BLOCKS and \
+                    level.glLevel[(self.pos[0], self.pos[1])] not in CC.CARRY_BLOCKS and \
                     not self.__in_obstacle__(obstacles, (self.pos[0] + 1, self.pos[1])):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
@@ -160,10 +159,10 @@ class Character(block.Block):
         if disp[0] != 0 and disp[1] != 0:
             return False  # Character can not move in two directions simultaneously
 
-        if glLevel[self.pos[0] + disp[0]][self.pos[1] + disp[1]] in CC.SOLID_BLOCKS:
+        if level.glLevel[(self.pos[0] + disp[0], self.pos[1] + disp[1])] in CC.SOLID_BLOCKS:
             return False  # Impossible movement, block in the way
 
-        if disp[0] == -1 and glLevel[self.pos[0]][self.pos[1]] not in CC.CLIMB_BLOCKS:
+        if disp[0] == -1 and level.glLevel[self.pos] not in CC.CLIMB_BLOCKS:
             return False  # Impossible to move up
 
         if obstacles is not None and self.__in_obstacle__(obstacles, (self.pos[0] + disp[0], self.pos[1] + disp[1])):
@@ -172,9 +171,7 @@ class Character(block.Block):
         if check_bounds((self.pos[0] + disp[0], self.pos[1] + disp[1])):
             # Looks like we can move
             # Character movement itself
-            if self.step_sound is not None:
-                # self.step_sound.stop()
-                self.step_sound.play()
+            self.step_sound is None or self.step_sound.play()
             self.pos[0] += disp[0]
             self.pos[1] += disp[1]
             return True
@@ -311,7 +308,7 @@ class Player(Character):
             return True
 
         for obstacle in obstacles:
-            if self.pos[0] == obstacle.pos[0] and self.pos[1] == obstacle.pos[1]:
+            if self.pos == obstacle.pos:
                 return False
 
         attack = {K_q: ("attack_left", -1),
@@ -319,16 +316,16 @@ class Player(Character):
         for key in attack:
             if pressed_keys[key]:
                 if 0 <= self.pos[1] + attack[key][1] < CC.LEVEL_WIDTH and \
-                        glLevel[self.pos[0]][self.pos[1] + attack[key][1]] == '.' and \
-                        glLevel[self.pos[0] + 1][self.pos[1] + attack[key][1]] in CC.DESTRUCTABLE_BLOCKS:
-                    self.attack_sound is not None and self.attack_sound.play()
+                        level.glLevel[(self.pos[0], self.pos[1] + attack[key][1])] == '.' and \
+                        level.glLevel[(self.pos[0] + 1, self.pos[1] + attack[key][1])] in CC.DESTRUCTABLE_BLOCKS:
+                    self.attack_sound is None or self.attack_sound.play()
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
                     crack.pos = [self.pos[0] + 1, self.pos[1] + attack[key][1]]
-                    crack.underlay = glLevel[self.pos[0] + 1][self.pos[1] + attack[key][1]]
+                    crack.underlay = level.glLevel[(self.pos[0] + 1, self.pos[1] + attack[key][1])]
 
-                    glLevel[self.pos[0] + 1][self.pos[1] + attack[key][1]] = '.'
+                    level.glLevel[(self.pos[0] + 1, self.pos[1] + attack[key][1])] = '.'
 
                     temporary_items.append(fire)
                     temporary_items.append(crack)
@@ -343,10 +340,7 @@ class Player(Character):
 
 def check_bounds(pos: tuple):
     """Return true, if provided position within screen bounds, else false"""
-    if 0 <= pos[1] < CC.LEVEL_WIDTH and \
-            0 <= pos[0] < CC.LEVEL_HEIGHT:
-        return True
-    return False
+    return 0 <= pos[1] < CC.LEVEL_WIDTH and 0 <= pos[0] < CC.LEVEL_HEIGHT
 
 
 def sign(x):
