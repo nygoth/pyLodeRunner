@@ -51,8 +51,7 @@ class Level:
              done_sound=None,
              exit_appears_sound=None):
         solid = CC.BLOCKS["static"]
-        for ch in solid:
-            self.sprites[ch] = block.Block(solid[ch][0])
+        self.sprites = {ch: block.Block(solid[ch][0]) for ch in solid}
         self.level_end_sound = load_sound((self.level_end_sound_filename, done_sound)[done_sound is not None])
         self.exit_appears_sound = \
             load_sound((self.exit_appears_sound_filename, exit_appears_sound)[exit_appears_sound is not None])
@@ -121,12 +120,13 @@ class Level:
         if canvas is None:
             return
 
+        # Clean game screen
         canvas.fill((0, 0, 0))
         for row, y in zip(self.level, range(CC.LEVEL_HEIGHT + 1)):
             for blk, x in zip(row, range(CC.LEVEL_WIDTH + 1)):
                 # Используем метод get. Он не выдаёт ошибок, если индекс отсутствует, а возвращает None, что удобнее
                 cur_block: block.Block = self.sprites.get(blk)
-                cur_block is None or cur_block.show(canvas, (x, y))
+                cur_block is None or cur_block.show(canvas, [y, x])
 
     def show_static(self, canvas: pygame.Surface = None):
         """Переносит заранее нарисованную статичную часть уровня на заданную канву."""

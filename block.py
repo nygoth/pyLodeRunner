@@ -20,7 +20,7 @@ class Block(pygame.sprite.Sprite):
 
     def __init__(self, img, position: list = None, subfolder=""):
         super().__init__()
-        self.pos = list() if position is None else position
+        self.pos = [0, 0] if position is None else position
         self.oldpos = None
         self.base_images_folder = path.join(path.dirname(__file__), "images", subfolder)
 
@@ -58,15 +58,15 @@ class Block(pygame.sprite.Sprite):
         disp_y = (self.pos[0] - self.oldpos[0]) * disp
         return self.oldpos[1] * CC.BLOCK_WIDTH + disp_x, self.oldpos[0] * CC.BLOCK_WIDTH + disp_y
 
-    def show(self, canvas: pygame.Surface, pos: tuple):
+    def show(self, canvas: pygame.Surface, pos: list):
         """Рисование спрайта в заданных координатах сетки на заданной канве"""
-        canvas.blit(self.image, self.image.get_rect(topleft=(pos[0] * CC.BLOCK_WIDTH, pos[1] * CC.BLOCK_WIDTH)))
+        canvas.blit(self.image, self.image.get_rect(topleft=(pos[1] * CC.BLOCK_WIDTH, pos[0] * CC.BLOCK_WIDTH)))
 
 
 class Button(Block):
     """ Элемент интерфейса -- кнопка. Имеет два состояния: нажата и не нажата."""
 
-    def __init__(self, img: tuple, subfolder="", pos: tuple = None, event: int = 0, key=0):
+    def __init__(self, img: tuple, subfolder="", pos: list = None, event: int = 0, key=0):
         super().__init__(img[0], subfolder=subfolder)
 
         self.images = [self.image, None]
@@ -135,7 +135,7 @@ class AnimatedBlock(Block):
                 self.ticks += 1
             else:
                 self.ticks = 0
-                self.current_frame = self.current_frame + 1 if self.in_action else self.current_frame
+                self.current_frame += 1
                 if self.current_frame >= len(self.images) or not self.in_action:
                     self.current_frame = 0
 
@@ -166,10 +166,7 @@ class AnimatedBlock(Block):
             else:
                 dst.image = self.image.copy()
         else:
-            for pict in self.images:
-                dst.images.append(pict.copy(xflip, yflip, scale))
-            # for pict in self.images[z].images_end:
-            #     copied.images_end.append(pict.copy(xflip,yflip,scale))
+            dst.images = [pict.copy(xflip, yflip, scale) for pict in self.images]
 
         return dst
 
@@ -195,9 +192,7 @@ class TemporaryBlock(AnimatedBlock):
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
         if isinstance(img_end, (tuple, list)):
-            self.images_end = list()
-            for file in img_end:
-                self.images_end.append(Block(file, position, subfolder))
+            self.images_end = [Block(file, position, subfolder) for file in img_end]
 
     def get_image(self, tick):
         if self.single:
@@ -218,6 +213,7 @@ class TemporaryBlock(AnimatedBlock):
                 if self.on_start:
                     self.on_start = False
                     self.current_frame = len(self.images) - 1
+                    # Если нет финальной анимации, блок должен быть уничтожен
                     if self.images_end is None:
                         self.died = True
                 else:  # Объект отыграл финальную анимацию и должен быть уничтожен
@@ -234,9 +230,7 @@ class TemporaryBlock(AnimatedBlock):
                     self.current_frame == 0 and self.ticks == 0 and \
                     not self.died:
                 # Чтобы работал старый код, просто подставим анимацию финала вместо стартовой
-                temp_img = self.images
-                self.images = self.images_end
-                self.images_end = temp_img
+                self.images, self.images_end = self.images_end, self.images
 
         return self.images[self.current_frame].image
 
@@ -244,9 +238,7 @@ class TemporaryBlock(AnimatedBlock):
         copied = TemporaryBlock((None, None), self.pos, animation_delay=self.delay, animation_pause=self.pause)
         self.__copy_body__(copied, xflip, yflip, scale)
         if self.images_end is not None:
-            copied.images_end = list()
-            for pict in self.images_end:
-                copied.images_end.append(pict.copy(xflip, yflip, scale))
+            copied.images_end = [pict.copy(xflip, yflip, scale) for pict in self.images_end]
         copied.on_start = self.on_start
         copied.died = self.died
         copied.underlay = self.underlay

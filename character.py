@@ -10,6 +10,7 @@ from pygame.locals import *
 import block
 import CC
 import level
+from glb import *
 
 K_IDLE = 1
 STATE_FALL = 10
@@ -80,9 +81,7 @@ class Character(block.Block):
 
             for state in STATES.keys():
                 if state in img:
-                    self.images[STATES[state]] = list()
-                    for file in img[state]:
-                        self.images[STATES[state]].append(block.Block(file, position, subfolder))
+                    self.images[STATES[state]] = [block.Block(file, position, subfolder) for file in img[state]]
 
             # Let's duplicate and flip walking animation if absent
             self.__clone_animation__(STATES["walk_left"], STATES["walk_right"], True)
@@ -110,17 +109,14 @@ class Character(block.Block):
                 self.images[attack_list[1]] = self.images[attack_list[0]].copy(xflip=True)
 
     def __clone_animation__(self, state1, state2, flip=False, reverse=False):
-        f = state1
-        z = state2
+        f, z = state1, state2
         for i in range(2):
             if f not in self.images and z in self.images:
                 if isinstance(self.images[z], list):
-                    self.images[f] = list()
-                    for pict in reversed(self.images[z]) if reverse else self.images[z]:
-                        self.images[f].append(pict.copy(xflip=flip))
+                    self.images[f] = [pict.copy(xflip=flip) for pict in reversed(self.images[z])] if reverse \
+                        else [pict.copy(xflip=flip) for pict in self.images[z]]
                 break
-            f = state2
-            z = state1
+            f, z = state2, state1
 
     def __set_state__(self):
         self.move_state = (STATE_STAND, STATE_HANG)[level.glLevel[self.pos] in CC.HANG_BLOCKS]
@@ -141,10 +137,11 @@ class Character(block.Block):
         self.oldpos = self.pos.copy()
         self.__set_state__()
 
-        if check_bounds((self.pos[0] + 1, self.pos[1])):
-            if level.glLevel[(self.pos[0] + 1, self.pos[1])] not in CC.SUPPORT_BLOCKS and \
-                    level.glLevel[(self.pos[0], self.pos[1])] not in CC.CARRY_BLOCKS and \
-                    not self.__in_obstacle__(obstacles, [self.pos[0] + 1, self.pos[1]]):
+        tmp_pos = [self.pos[0] + 1, self.pos[1]]
+        if check_bounds(tmp_pos):
+            if level.glLevel[tmp_pos] not in CC.SUPPORT_BLOCKS and \
+                    level.glLevel[self.pos] not in CC.CARRY_BLOCKS and \
+                    not self.__in_obstacle__(obstacles, tmp_pos):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
                 self.move_direction = K_IDLE
@@ -160,21 +157,22 @@ class Character(block.Block):
         if disp[0] != 0 and disp[1] != 0:
             return False  # Character can not move in two directions simultaneously
 
-        if level.glLevel[(self.pos[0] + disp[0], self.pos[1] + disp[1])] in CC.SOLID_BLOCKS:
+        tmp_pos = [self.pos[0] + disp[0], self.pos[1] + disp[1]]
+
+        if level.glLevel[tmp_pos] in CC.SOLID_BLOCKS:
             return False  # Impossible movement, block in the way
 
         if disp[0] == -1 and level.glLevel[self.pos] not in CC.CLIMB_BLOCKS:
             return False  # Impossible to move up
 
-        if obstacles is not None and self.__in_obstacle__(obstacles, (self.pos[0] + disp[0], self.pos[1] + disp[1])):
+        if obstacles is not None and self.__in_obstacle__(obstacles, tmp_pos):
             return False
 
-        if check_bounds((self.pos[0] + disp[0], self.pos[1] + disp[1])):
+        if check_bounds(tmp_pos):
             # Looks like we can move
             # Character movement itself
             self.step_sound is None or self.step_sound.play()
-            self.pos[0] += disp[0]
-            self.pos[1] += disp[1]
+            self.pos = tmp_pos.copy()
             return True
 
         return False
@@ -198,8 +196,7 @@ class Character(block.Block):
             return self.image
 
     def show(self, canvas: pygame.Surface, tick):
-        canvas.blit(self.get_image(tick),
-                    self.get_screen_pos(self.animation_step, tick))
+        canvas.blit(self.get_image(tick), self.get_screen_pos(self.animation_step, tick))
 
 
 class Beast(Character):
@@ -237,7 +234,6 @@ class Beast(Character):
         if disp_x == 0 and disp_y == 0:
             return False
 
-        res = False
         disp_x = sign(disp_x)
         disp_y = sign(disp_y)
         k_horiz = K_IDLE
@@ -246,17 +242,15 @@ class Beast(Character):
             self.range = random.randrange(0, 4)
             if disp_y != 0:
                 k_vert = I_MOTION[(disp_y, 0)]
-                res = super().move((disp_y, 0), beasts)
-            # Смогли пойти вертикально по направлению к игроку
-            if res:
+            if super().move((disp_y, 0), beasts):
+                # Смогли пойти вертикально по направлению к игроку
                 self.move_direction = k_vert
                 return True
 
             if disp_x != 0:
                 k_horiz = I_MOTION[(0, disp_x)]
-                res = super().move((0, disp_x), beasts)
-            # Смогли пойти горизонтально
-            if res:
+            if super().move((0, disp_x), beasts):
+                # Смогли пойти горизонтально
                 self.move_direction = k_horiz
                 return True
 
@@ -308,10 +302,8 @@ class Player(Character):
             self.move_direction = K_IDLE
             return True
 
-        if obstacles is not None:
-            for obstacle in obstacles:
-                if self.pos == obstacle.pos:
-                    return False
+        if self.__in_obstacle__(obstacles, self.pos):
+            return False
 
         attack = {K_q: ("attack_left", -1),
                   K_w: ("attack_right", +1)}
@@ -325,9 +317,9 @@ class Player(Character):
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
                     crack.pos = [self.pos[0] + 1, self.pos[1] + attack[key][1]]
-                    crack.underlay = level.glLevel[(self.pos[0] + 1, self.pos[1] + attack[key][1])]
+                    crack.underlay = level.glLevel[crack.pos]
 
-                    level.glLevel[(self.pos[0] + 1, self.pos[1] + attack[key][1])] = '.'
+                    level.glLevel[crack.pos] = '.'
 
                     temporary_items.append(fire)
                     temporary_items.append(crack)
@@ -338,12 +330,3 @@ class Player(Character):
                     self.move_direction = key
                     break
         return True
-
-
-def check_bounds(pos: tuple):
-    """Return true, if provided position within screen bounds, else false"""
-    return 0 <= pos[1] < CC.LEVEL_WIDTH and 0 <= pos[0] < CC.LEVEL_HEIGHT
-
-
-def sign(x):
-    return -1 if x < 0 else 1 if x > 0 else 0

@@ -19,3 +19,11 @@ def to_number(val):
     """Return random number from provided range or value itself"""
     return random.randrange(int(val[0]), int(val[1]), int(val[2])) if isinstance(val, (list, tuple)) else val
 
+
+def check_bounds(pos: list):
+    """Return true, if provided position within screen bounds, else false"""
+    return 0 <= pos[1] < CC.LEVEL_WIDTH and 0 <= pos[0] < CC.LEVEL_HEIGHT
+
+
+def sign(x):
+    return -1 if x < 0 else 1 if x > 0 else 0
