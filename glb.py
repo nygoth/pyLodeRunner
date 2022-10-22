@@ -4,6 +4,7 @@ from os import path
 import pygame
 from pygame.locals import *
 import random
+import CC
 
 
 def load_sound(filename):
