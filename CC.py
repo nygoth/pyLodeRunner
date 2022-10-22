@@ -5,6 +5,15 @@
 from os import path
 import json
 
+
+# Статусы завершения игры
+GAME_OVER_NOT_OVER = 0  # Игра продолжается
+GAME_OVER_COMPLETE = 1  # Уровень пройден
+GAME_OVER_EATEN = 2  # Игрока съели
+GAME_OVER_STUCK = 3  # Игрок застрял в разрушенном блоке
+GAME_OVER_KILLED = 4  # Игрок убит в смертельном блоке
+GAME_OVER_USER_END = 100  # Пользователь хочет закрыть программу
+
 GAME_CONFIG_FILE = path.join(path.dirname(__file__), "structure.ini")
 """Define global game settings like blocks info, animation etc"""
 

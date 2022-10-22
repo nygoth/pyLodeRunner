@@ -46,13 +46,15 @@ I_MOTION = dict(zip(MOTION.values(), MOTION.keys()))
 
 
 class Character(block.Block):
-    """Базовый класс игрового персонажа. Анимированный, перемещается
+    """Базовый класс игрового персонажа. Анимированный, перемещается.
 
         Здесь реализовано базовое движение и падение под действием гравитации.
-        А также -- проверка столкновений
+        А также -- проверка столкновений.
+
+        Этот класс не может существовать без ссылки на класс уровня.
     """
 
-    def __init__(self, img,
+    def __init__(self, img, game_field: level.Level,
                  position: list = None,
                  subfolder="",
                  sounds: tuple = None,
@@ -60,6 +62,7 @@ class Character(block.Block):
                  fall_delay=100,
                  step=0,
                  animation_step=0):
+        self.game_field = game_field
         self.pos = [0, 0] if position is None else position
         self.oldpos = self.pos
         self.move_direction = K_IDLE
@@ -119,7 +122,7 @@ class Character(block.Block):
             f, z = state2, state1
 
     def __set_state__(self):
-        self.move_state = (STATE_STAND, STATE_HANG)[level.glLevel[self.pos] in CC.HANG_BLOCKS]
+        self.move_state = (STATE_STAND, STATE_HANG)[self.game_field[self.pos] in CC.HANG_BLOCKS]
 
     @staticmethod
     def __in_obstacle__(obstacles: list, pos: list):
@@ -139,8 +142,8 @@ class Character(block.Block):
 
         tmp_pos = [self.pos[0] + 1, self.pos[1]]
         if check_bounds(tmp_pos):
-            if level.glLevel[tmp_pos] not in CC.SUPPORT_BLOCKS and \
-                    level.glLevel[self.pos] not in CC.CARRY_BLOCKS and \
+            if self.game_field[tmp_pos] not in CC.SUPPORT_BLOCKS and \
+                    self.game_field[self.pos] not in CC.CARRY_BLOCKS and \
                     not self.__in_obstacle__(obstacles, tmp_pos):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
@@ -159,10 +162,10 @@ class Character(block.Block):
 
         tmp_pos = [self.pos[0] + disp[0], self.pos[1] + disp[1]]
 
-        if level.glLevel[tmp_pos] in CC.SOLID_BLOCKS:
+        if self.game_field[tmp_pos] in CC.SOLID_BLOCKS:
             return False  # Impossible movement, block in the way
 
-        if disp[0] == -1 and level.glLevel[self.pos] not in CC.CLIMB_BLOCKS:
+        if disp[0] == -1 and self.game_field[self.pos] not in CC.CLIMB_BLOCKS:
             return False  # Impossible to move up
 
         if obstacles is not None and self.__in_obstacle__(obstacles, tmp_pos):
@@ -205,7 +208,7 @@ class Beast(Character):
         В общем случае, он стремится по кратчайшей траектории подойти к игроку.
     """
 
-    def __init__(self, img,
+    def __init__(self, img, game_field: level.Level,
                  position=None,
                  subfolder="",
                  sounds: tuple = None,
@@ -213,7 +216,8 @@ class Beast(Character):
                  fall_delay=100,
                  step=0,
                  animation_step=0):
-        super(Beast, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay, step, animation_step)
+        super(Beast, self).__init__(img, game_field, position, subfolder, sounds,
+                                    idle_delay, fall_delay, step, animation_step)
         # Запоминаем позицию рождения для возрождения чудовища в исходном месте при его смерти
         self.spawn_pos = self.pos.copy()
         self.idioticy = 0
@@ -274,7 +278,7 @@ class Player(Character):
         Здесь происходит проверка клавиатурного ввода и передача команд на движение.
     """
 
-    def __init__(self, img,
+    def __init__(self, img, game_field: level.Level,
                  position=None,
                  subfolder="",
                  sounds: tuple = None,
@@ -282,7 +286,8 @@ class Player(Character):
                  fall_delay=100,
                  step=0,
                  animation_step=0):
-        super(Player, self).__init__(img, position, subfolder, sounds, idle_delay, fall_delay, step, animation_step)
+        super(Player, self).__init__(img, game_field, position, subfolder, sounds,
+                                     idle_delay, fall_delay, step, animation_step)
         # TODO Все временные блоки, ассоциированные с разрушаемыми, должны читаться и создаваться
         # TODO где-то вне. А при атаке игрока должен вставляться именно тот блок, который соответствует
         # TODO разрушаемому.
@@ -310,16 +315,16 @@ class Player(Character):
         for key in attack:
             if pressed_keys[key]:
                 if 0 <= self.pos[1] + attack[key][1] < CC.LEVEL_WIDTH and \
-                        level.glLevel[(self.pos[0], self.pos[1] + attack[key][1])] == '.' and \
-                        level.glLevel[(self.pos[0] + 1, self.pos[1] + attack[key][1])] in CC.DESTRUCTABLE_BLOCKS:
+                        self.game_field[(self.pos[0], self.pos[1] + attack[key][1])] == '.' and \
+                        self.game_field[(self.pos[0] + 1, self.pos[1] + attack[key][1])] in CC.DESTRUCTABLE_BLOCKS:
                     self.attack_sound is None or self.attack_sound.play()
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()
                     fire.pos = [self.pos[0], self.pos[1] + attack[key][1]]
                     crack.pos = [self.pos[0] + 1, self.pos[1] + attack[key][1]]
-                    crack.underlay = level.glLevel[crack.pos]
+                    crack.underlay = self.game_field[crack.pos]
 
-                    level.glLevel[crack.pos] = '.'
+                    self.game_field[crack.pos] = '.'
 
                     temporary_items.append(fire)
                     temporary_items.append(crack)

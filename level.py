@@ -11,8 +11,6 @@ import character
 class Level:
     def __init__(self,
                  canvas=None,
-                 filename=None,
-                 player=None,
                  done_sound="level end.wav",
                  exit_appears_sound="exit.wav"):
         self.treasures_count = 0
@@ -27,6 +25,9 @@ class Level:
         self.beasts = list()
         """List of beasts in level"""
 
+        self.player = None
+        """Player character"""
+
         self.animated_entities = dict()
         """List of animated things on map"""
 
@@ -40,23 +41,40 @@ class Level:
         self.canvas: pygame.Surface = None
         self.static_image: pygame.Surface = None
         self.set_canvas(canvas)
-
-        (player is None or filename is None) or self.load(filename, player)
+        canvas is None or self.init(done_sound, exit_appears_sound)
 
     def set_canvas(self, canvas: pygame.Surface):
+        """Set the drawing canvas for level. It can be called internally in constructor or separately,
+            if drawing surface changed."""
         self.canvas: pygame.Surface = canvas
         self.static_image: pygame.Surface = pygame.Surface(self.canvas.get_size()) if canvas is not None else None
 
     def init(self,
              done_sound=None,
              exit_appears_sound=None):
+        """Initialize object. This must be called after pygame init and screen canvas creation.
+            So, this is called from construcrtor internally, if canvas provided, or must be called
+            separately and explicitly after "set_canvas" call."""
         solid = CC.BLOCKS["static"]
         self.sprites = {ch: block.Block(solid[ch][0]) for ch in solid}
         self.level_end_sound = load_sound((self.level_end_sound_filename, done_sound)[done_sound is not None])
         self.exit_appears_sound = \
             load_sound((self.exit_appears_sound_filename, exit_appears_sound)[exit_appears_sound is not None])
+        self.player = character.Player(CC.PLAYER_UNIT["animation"], self,
+                                       subfolder=CC.PLAYER_UNIT["folder"],
+                                       sounds=(load_sound(CC.PLAYER_UNIT["sounds"]["steps"]),
+                                               load_sound(CC.PLAYER_UNIT["sounds"]["attack"]),
+                                               {CC.GAME_OVER_EATEN: load_sound(CC.PLAYER_UNIT["sounds"]["eaten"]),
+                                                CC.GAME_OVER_KILLED: load_sound(CC.PLAYER_UNIT["sounds"]["killed"]),
+                                                CC.GAME_OVER_STUCK: load_sound(CC.PLAYER_UNIT["sounds"]["stuck"]),
+                                                CC.GAME_OVER_USER_END: load_sound(CC.PLAYER_UNIT["sounds"]["leave"]),
+                                                }),
+                                       idle_delay=CC.PLAYER_UNIT["idle_delay"],
+                                       fall_delay=CC.PLAYER_UNIT["fall_delay"],
+                                       step=CC.STEP,
+                                       animation_step=CC.PLAYER_ANIMATION_STEP)
 
-    def load(self, filename, player):
+    def load(self, filename):
         """Загружает игровой уровень. Создаёт всю необходимую структуру и динамические объекты.
             Уровень -- текстовый файл с буквами и символами, соответствующими структуре уровня.
             Если канва уже задана (не None), сразу рисует статичную картинку."""
@@ -89,7 +107,7 @@ class Level:
 
                     if ch in CC.BEAST_BLOCKS:
                         monster = CC.BEAST_UNITS[ch]
-                        self.beasts.append(character.Beast(monster, [row, col], subfolder=monster["folder"],
+                        self.beasts.append(character.Beast(monster, self, [row, col], subfolder=monster["folder"],
                                                            sounds=(None, None, load_sound(monster["dieSound"])),
                                                            idle_delay=monster["idle_delay"],
                                                            fall_delay=monster["fall_delay"],
@@ -98,8 +116,8 @@ class Level:
 
                     # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                     if ch == 'I':
-                        player.pos = [row, col]
-                        player.oldpos = [row, col]
+                        self.player.pos = [row, col]
+                        self.player.oldpos = [row, col]
 
                     static_line.append(('.', ch)[ch in CC.MAPPED_BLOCKS and ch not in CC.EXIT_BLOCKS])
 
@@ -151,20 +169,28 @@ class Level:
         for beast in self.beasts:
             beast.show(canvas, tick)
 
+    def show_player(self, tick=0, canvas: pygame.Surface = None):
+        """Рисует монстров уровня"""
+        canvas = (self.canvas, canvas)[canvas is not None]
+        if canvas is None:
+            return
+        self.player.show(canvas, tick)
+
     def show(self, canvas: pygame.Surface = None, tick=0):
         """Рисует всю графику, ассоциированную с уровнем"""
         self.show_static(canvas)
         self.show_animated(tick, canvas)
         self.show_beasts(tick, canvas)
+        self.show_player(tick, canvas)
 
-    def live(self, player, tick=0) -> int:
+    def live(self, tick=0) -> int:
         """Жизненный цикл уровня. Монстры бегут к игроку, кушают его и умирают, если попадут в ловушку.
             Монстры отрисовываются."""
         for beast in self.beasts:
             if tick == 0:
                 # Метод возвращает ложь, если монстр оказался в позиции игрока
                 # В нашей ситуации это означает съедение
-                if not beast.move(player.pos, self.beasts):
+                if not beast.move(self.player.pos, self.beasts):
                     beast.show(self.canvas, tick)
                     return 1
                 else:
@@ -174,16 +200,16 @@ class Level:
                         beast.die()
             beast.show(self.canvas, tick)
         # Проверка, умер ли игрок на смертельном поле
-        if self[player.oldpos] in CC.DEADLY_BLOCKS:
-            key = str(player.oldpos) + ":" + str(self[player.oldpos])
+        if self[self.player.oldpos] in CC.DEADLY_BLOCKS:
+            key = str(self.player.oldpos) + ":" + str(self[self.player.oldpos])
             self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
             return 2
         return 0
 
-    def collect_treasures(self, player_pos):
+    def collect_treasures(self):
         """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""
         for chb in CC.TREASURE_BLOCKS:
-            key = str(player_pos) + ":" + chb
+            key = str(self.player.oldpos) + ":" + chb
             if key in self.animated_entities:
                 self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
                 del self.animated_entities[key]
@@ -197,12 +223,21 @@ class Level:
                     self.prepare_static()
                     self.show_static()
 
+    @staticmethod
+    def play_background_music(filename):
+        """Load and start playing level background music"""
+        pygame.mixer.music.load(filename)
+        pygame.mixer.music.set_volume(0.1)
+        pygame.mixer.music.play(-1)
+
+    def stop_all_sounds(self):
+        """Stop playing all level related sounds. Used in level change procedure."""
+        self.exit_appears_sound.stop()
+        self.level_end_sound.stop()
+
     def __getitem__(self, item):
         return (None, self.level[item[0]][item[1]])[isinstance(item, (list, tuple))]
 
     def __setitem__(self, key, value):
         if isinstance(key, (list, tuple)):
             self.level[key[0]][key[1]] = value
-
-
-glLevel = Level()

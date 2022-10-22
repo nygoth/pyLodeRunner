@@ -39,14 +39,6 @@ import CC
 import level
 from glb import *
 
-# Статусы завершения игры
-GAME_OVER_NOT_OVER = 0  # Игра продолжается
-GAME_OVER_COMPLETE = 1  # Уровень пройден
-GAME_OVER_EATEN = 2  # Игрока съели
-GAME_OVER_STUCK = 3  # Игрок застрял в разрушенном блоке
-GAME_OVER_KILLED = 4  # Игрок убит в смертельном блоке
-GAME_OVER_USER_END = 100  # Пользователь хочет закрыть программу
-
 # What next after level end (fail or win)
 ACTION_QUIT = 0  # Exit program
 ACTION_NEXT = 1  # Proceed to next level
@@ -66,9 +58,9 @@ def init_screen(width, height):
 
 def block_killing_action(blk: block):
     """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
-    if glPlayer.pos == blk.pos:
+    if glLevel.player.pos == blk.pos:
         return False
-    for monster in level.glLevel.beasts:
+    for monster in glLevel.beasts:
         if monster.pos == blk.pos:
             monster.die()
     return True
@@ -82,8 +74,8 @@ def game_over(reason: int):
 
     # Если игрок уровень проиграл, то нужно воспроизвести соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
-    if reason != GAME_OVER_COMPLETE:
-        glPlayer.die_sound is None or glPlayer.die_sound[reason].play()
+    if reason != CC.GAME_OVER_COMPLETE:
+        glLevel.player.die_sound is None or glLevel.player.die_sound[reason].play()
         glMainCanvas.blit(FailTitle.image, FailTitle.image.get_rect(center=(scr_halfwidth, scr_halfheight)))
 
         btRestart.rect = btRestart.image.get_rect(
@@ -92,7 +84,7 @@ def game_over(reason: int):
         buttons.append(btRestart)
 
     else:  # Если переход на следующий уровень, то а) нужный звук и б) кнопка "Next level"
-        level.glLevel.level_end_sound.play()
+        glLevel.level_end_sound.play()
         glMainCanvas.blit(WinTitle.image, WinTitle.image.get_rect(center=(scr_halfwidth, scr_halfheight)))
         btNext.rect = btNext.image.get_rect(
             topleft=(scr_halfwidth - btNext.rect.width - CC.BLOCK_WIDTH, scr_halfheight + CC.BLOCK_WIDTH * 2))
@@ -147,21 +139,8 @@ CC.BLOCKS["temporary"]["cracked"][2] = int(CC.FPS * 2.2)
 # This makes game screen insensitive to Windows 10 scale setting in screen preferences
 ctypes.windll.user32.SetProcessDPIAware()
 glMainCanvas = init_screen(CC.BLOCK_WIDTH * CC.LEVEL_WIDTH, CC.BLOCK_WIDTH * CC.LEVEL_HEIGHT)
-level.glLevel.set_canvas(glMainCanvas)
-level.glLevel.init()
 
-glPlayer = character.Player(CC.PLAYER_UNIT["animation"], subfolder=CC.PLAYER_UNIT["folder"],
-                            sounds=(load_sound(CC.PLAYER_UNIT["sounds"]["steps"]),
-                                    load_sound(CC.PLAYER_UNIT["sounds"]["attack"]),
-                                    {GAME_OVER_EATEN: load_sound(CC.PLAYER_UNIT["sounds"]["eaten"]),
-                                     GAME_OVER_KILLED: load_sound(CC.PLAYER_UNIT["sounds"]["killed"]),
-                                     GAME_OVER_STUCK: load_sound(CC.PLAYER_UNIT["sounds"]["stuck"]),
-                                     GAME_OVER_USER_END: load_sound(CC.PLAYER_UNIT["sounds"]["leave"]),
-                                     }),
-                            idle_delay=CC.PLAYER_UNIT["idle_delay"],
-                            fall_delay=CC.PLAYER_UNIT["fall_delay"],
-                            step=CC.STEP,
-                            animation_step=CC.PLAYER_ANIMATION_STEP)
+glLevel = level.Level(glMainCanvas)
 
 FailTitle = block.Block("Game over title.jpg", subfolder="Titles")
 WinTitle = block.Block("Win title.jpg", subfolder="Titles")
@@ -215,15 +194,12 @@ pygame.mixer.music.stop()
 while whatNext in (ACTION_NEXT, ACTION_RESTART):
     glTemporaryItems = list()
 
-    level.glLevel.exit_appears_sound.stop()
-    level.glLevel.level_end_sound.stop()
+    glLevel.stop_all_sounds()
 
     current_song += (whatNext == ACTION_NEXT)
     if current_song >= len(songs_list):
         current_song = 0
-    pygame.mixer.music.load(path.join(music_dir, songs_list[current_song]))
-    pygame.mixer.music.set_volume(0.1)
-    pygame.mixer.music.play(-1)
+    glLevel.play_background_music(path.join(music_dir, songs_list[current_song]))
 
     if whatNext == ACTION_NEXT:
         current_level = (0, current_level + 1)[current_level < len(levels_list) - 1]
@@ -236,58 +212,58 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
     with open(CC.GAME_STATE_FILE, "w") as config_file:
         game_state.write(config_file)
 
-    level.glLevel.load(path.join(levels_dir, levels_list[current_level]), glPlayer)
+    glLevel.load(path.join(levels_dir, levels_list[current_level]))
 
     # ======================================================
     # Pause 1,5 sec for user to look around new level
     # Beasts, treasures and player are blinking at this time
     # ======================================================
     for i in range(8):
-        level.glLevel.show_static()
-        level.glLevel.show_animated(0)
+        glLevel.show_static()
+        glLevel.show_animated(0)
         if i % 2 == 0:
-            glPlayer.show(glMainCanvas, 0)
-            level.glLevel.show_beasts(0)
+            glLevel.show_player(0)
+            glLevel.show_beasts(0)
         pygame.display.update()
         glClock.tick(8)
 
-    game_over_reason = GAME_OVER_NOT_OVER
+    game_over_reason = CC.GAME_OVER_NOT_OVER
     player_tick = beast_tick = 0
 
     # =================================================================================================
     # Game lifecycle
     # =================================================================================================
-    while game_over_reason == GAME_OVER_NOT_OVER:
+    while game_over_reason == CC.GAME_OVER_NOT_OVER:
         # =================================
         # Actions on user interrupt attempt
         # =================================
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
                 whatNext = ACTION_QUIT
-                game_over_reason = GAME_OVER_USER_END
+                game_over_reason = CC.GAME_OVER_USER_END
 
         # =====================
         # Erasing old animation
         # =====================
-        level.glLevel.show_static()
+        glLevel.show_static()
 
         # =======================================
         # Do player movement and collisions check
         # =======================================
         if player_tick == 0:
-            if not glPlayer.move(level.glLevel.beasts, glTemporaryItems):
-                game_over_reason = GAME_OVER_EATEN
+            if not glLevel.player.move(glLevel.beasts, glTemporaryItems):
+                game_over_reason = CC.GAME_OVER_EATEN
             else:
-                level.glLevel.collect_treasures(glPlayer.oldpos)
+                glLevel.collect_treasures()
 
-            if glPlayer.oldpos[0] == 0:
-                game_over_reason = GAME_OVER_COMPLETE
+            if glLevel.player.oldpos[0] == 0:
+                game_over_reason = CC.GAME_OVER_COMPLETE
 
         # ================================================
         # Drawing items in their positions
         # First -- non-movable level blocks with animation
         # ================================================
-        level.glLevel.show_animated(player_tick)
+        glLevel.show_animated(player_tick)
 
         # ==================================================================
         # Second -- draw temporary items and do collision check if necessary
@@ -298,21 +274,21 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
                 if tempBlock.underlay is not None:
                     # TODO Check, whether we can move block_killing_action to TemporaryBlock class
                     if not block_killing_action(tempBlock):
-                        game_over_reason = GAME_OVER_STUCK
-                    level.glLevel[tempBlock.pos] = tempBlock.underlay
+                        game_over_reason = CC.GAME_OVER_STUCK
+                    glLevel[tempBlock.pos] = tempBlock.underlay
                 del glTemporaryItems[glTemporaryItems.index(tempBlock)]
 
         # ===========================
         # Third -- draw player sprite
         # ===========================
-        glPlayer.show(glMainCanvas, player_tick)
+        glLevel.show_player(player_tick)
 
         # ==================================================================
         # Fourth -- move all beasts and again do collision check with player
         #           More than, check player collision with deadly blocks
         # ==================================================================
         game_over_reason = \
-            (game_over_reason, GAME_OVER_EATEN, GAME_OVER_KILLED)[level.glLevel.live(glPlayer, beast_tick)]
+            (game_over_reason, CC.GAME_OVER_EATEN, CC.GAME_OVER_KILLED)[glLevel.live(beast_tick)]
 
         player_tick = (0, player_tick + 1)[player_tick < CC.STEP - 1]
         beast_tick = (0, beast_tick + 1)[beast_tick < CC.BEAST_STEP - 1]
