@@ -1,7 +1,6 @@
 """Level class for managing level data and do all other needful things for levels"""
 
 import pygame
-from pygame.locals import *
 import CC
 from glb import *
 import block
@@ -33,6 +32,9 @@ class Level:
 
         self.sprites = dict()
         """List of all static blocks. Just ordinary sprites"""
+
+        self.temporary_items = list()
+        """List of short-lived items for game events animation"""
 
         self.level_end_sound = self.exit_appears_sound = None
         self.level_end_sound_filename = done_sound
@@ -82,6 +84,7 @@ class Level:
         self.exit.clear()
         self.beasts.clear()
         self.animated_entities.clear()
+        self.temporary_items.clear()
         self.treasures_count = 0
 
         with open(filename, 'r') as lvl_stream:
@@ -176,35 +179,79 @@ class Level:
             return
         self.player.show(canvas, tick)
 
-    def show(self, canvas: pygame.Surface = None, tick=0):
-        """Рисует всю графику, ассоциированную с уровнем"""
-        self.show_static(canvas)
-        self.show_animated(tick, canvas)
-        self.show_beasts(tick, canvas)
-        self.show_player(tick, canvas)
-
-    def live(self, tick=0) -> int:
+    def live(self, player_tick=0, beast_tick=0) -> int:
         """Жизненный цикл уровня. Монстры бегут к игроку, кушают его и умирают, если попадут в ловушку.
             Монстры отрисовываются."""
+
+        live_result = CC.GAME_OVER_NOT_OVER
+        # =====================
+        # Erasing old animation
+        # =====================
+        self.show_static()
+
+        # =======================================
+        # Do player movement and collisions check
+        # =======================================
+        if player_tick == 0:
+            if not self.player.move(self.beasts, self.temporary_items):
+                live_result = CC.GAME_OVER_EATEN
+            else:
+                self.collect_treasures()
+
+            # Row position at 0 is win position
+            if self.player.oldpos[0] == 0:
+                live_result = CC.GAME_OVER_COMPLETE
+
+        # ===============================================
+        # Check for player death at deadly block
+        # ===============================================
+        if self[self.player.oldpos] in CC.DEADLY_BLOCKS:
+            key = str(self.player.oldpos) + ":" + str(self[self.player.oldpos])
+            self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
+            live_result = CC.GAME_OVER_KILLED
+
+        # ================================================
+        # Drawing items in their positions
+        # First -- non-movable level blocks with animation
+        # ================================================
+        self.show_animated(player_tick)
+
+        # ==================================================================
+        # Second -- draw temporary items and do collision check if necessary
+        # ==================================================================
+        for tempBlock in self.temporary_items:
+            tempBlock.show(self.canvas, player_tick)
+            if tempBlock.died:
+                if tempBlock.underlay is not None:
+                    # TODO Check, whether we can move block_killing_action to TemporaryBlock class
+                    if not tempBlock.is_killing(self.player.pos, self.beasts):
+                        live_result = CC.GAME_OVER_STUCK
+                    self[tempBlock.pos] = tempBlock.underlay
+                del self.temporary_items[self.temporary_items.index(tempBlock)]
+
+        # ===========================
+        # Third -- draw player sprite
+        # ===========================
+        self.show_player(player_tick)
+
+        # ========================================================
+        # Fourth -- move all beasts and check for eating player or
+        #           for death at deadly block. Draw them as well.
+        # ========================================================
         for beast in self.beasts:
-            if tick == 0:
+            if beast_tick == 0:
                 # Метод возвращает ложь, если монстр оказался в позиции игрока
                 # В нашей ситуации это означает съедение
                 if not beast.move(self.player.pos, self.beasts):
-                    beast.show(self.canvas, tick)
-                    return 1
+                    live_result = CC.GAME_OVER_EATEN
                 else:
                     if self[beast.oldpos] in CC.DEADLY_BLOCKS:
                         key = str(beast.oldpos) + ":" + str(self[beast.oldpos])
                         self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
                         beast.die()
-            beast.show(self.canvas, tick)
-        # Проверка, умер ли игрок на смертельном поле
-        if self[self.player.oldpos] in CC.DEADLY_BLOCKS:
-            key = str(self.player.oldpos) + ":" + str(self[self.player.oldpos])
-            self.animated_entities[key].hit_sound is None or self.animated_entities[key].hit_sound.play()
-            return 2
-        return 0
+            beast.show(self.canvas, beast_tick)
+
+        return live_result
 
     def collect_treasures(self):
         """Проверка на подбор сокровища игроком. Если все сокровища собраны, добавляем выход с уровня"""

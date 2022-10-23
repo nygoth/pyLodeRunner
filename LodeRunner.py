@@ -1,14 +1,13 @@
 """ LodeRunner clone game
  This project is for studying python programming
 
- V 7.8
+ V 7.9
 
  Рефактор кода.
  Реализация отдельного класса для уровня, перенос в него всех проблем, связанных с загрузкой, анимацией и
- прочими вещами, характерными для уровней.
- Плюс -- новый формат уровней. Помимо символов блоков нужно сделать такую же по размеру таблицу,
- которая будет задавать какие-то атрибуты блоков. Как минимум, группировку нескольких блоков в одну группу анимации.
- Чтобы верёвки, например, колебались каждая со своей скоростью.
+ прочими вещами, характерными для уровней. Там же сделан жизненный цикл уровня -- один тик. Тиками управляет
+ цикл в главном модуле.
+
 
  В данном проекте есть один серьёзный недочёт дизайна -- сейчас при загрузке уровня
  все анимированные спрайты создаются и загружаются заново. На каждый новый уровень. Причём, на каждый блок своя копия.
@@ -21,23 +20,24 @@
  опционально количество жизней. Очки считать очень просто -- обратное от времени, прошедшего между подборами сокровищ.
  Смысл в том, что чем быстрее собираются сокровища (и достигается выход), тем больше очков за уровень получаешь.
  Можно вести таблицу рекордов в сети.
+
+ Плюс -- новый формат уровней. Помимо символов блоков нужно сделать такую же по размеру таблицу,
+ которая будет задавать какие-то атрибуты блоков. Как минимум, группировку нескольких блоков в одну группу анимации.
+ Чтобы верёвки, например, колебались каждая со своей скоростью.
 """
 
-from os import walk, path
+from os import walk
 import sys
 import ctypes
-
 import configparser
 
-import pygame
-from pygame.locals import *
+import CC
+from glb import *
 
 import block
 import character
-
-import CC
 import level
-from glb import *
+
 
 # What next after level end (fail or win)
 ACTION_QUIT = 0  # Exit program
@@ -54,16 +54,6 @@ def init_screen(width, height):
     scr = pygame.display.set_mode((width, height))
     pygame.display.set_caption("pyLode Runner")
     return scr
-
-
-def block_killing_action(blk: block):
-    """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
-    if glLevel.player.pos == blk.pos:
-        return False
-    for monster in glLevel.beasts:
-        if monster.pos == blk.pos:
-            monster.die()
-    return True
 
 
 def game_over(reason: int):
@@ -133,6 +123,10 @@ game_state = configparser.ConfigParser()
 
 current_level, current_song = CC.init_config(game_state, config)
 
+# =======================
+# Starting initialization
+# =======================
+
 # Override default lifetime value in structure setting to avoid speed-related issues
 CC.BLOCKS["temporary"]["cracked"][2] = int(CC.FPS * 2.2)
 
@@ -152,7 +146,7 @@ btQuit = block.Button(("Quit.jpg", "Quit pressed.jpg"), "Buttons", event=ACTION_
 btNext = block.Button(("Next.jpg", "Next pressed.jpg"), "Buttons", event=ACTION_NEXT,
                       key=(K_RETURN, K_KP_ENTER, K_SPACE))
 
-whatNext = ACTION_NEXT
+what_next = ACTION_NEXT
 
 # ============
 # Intro screen
@@ -177,10 +171,14 @@ while running:
 
 pygame.mixer.music.stop()
 
+# ================
 # Enumerate levels
+# ================
 (levels_dir, _, levels_list) = next(walk(path.join(path.dirname(__file__), "Levels")), (None, None, []))
 
+# =========
 # And music
+# =========
 (music_dir, _, songs_list) = next(walk(path.join(path.dirname(__file__), "Music")), (None, None, []))
 
 # ========================================
@@ -190,20 +188,17 @@ pygame.mixer.music.stop()
 # для уровня инициализация, загрузка и
 # игровой цикл
 # ========================================
-
-while whatNext in (ACTION_NEXT, ACTION_RESTART):
-    glTemporaryItems = list()
-
+while what_next in (ACTION_NEXT, ACTION_RESTART):
     glLevel.stop_all_sounds()
 
-    current_song += (whatNext == ACTION_NEXT)
+    current_song += (what_next == ACTION_NEXT)
     if current_song >= len(songs_list):
         current_song = 0
     glLevel.play_background_music(path.join(music_dir, songs_list[current_song]))
 
-    if whatNext == ACTION_NEXT:
+    if what_next == ACTION_NEXT:
         current_level = (0, current_level + 1)[current_level < len(levels_list) - 1]
-    whatNext = ACTION_RESTART
+    what_next = ACTION_RESTART
 
     # Сразу нужно сохранить прогресс. Мало ли, выключится свет, слетит игра -- игрок должен вернуться именно на тот
     # уровень, до которого дошёл
@@ -239,56 +234,16 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         # =================================
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYUP and event.key == K_ESCAPE):
-                whatNext = ACTION_QUIT
+                what_next = ACTION_QUIT
                 game_over_reason = CC.GAME_OVER_USER_END
 
-        # =====================
-        # Erasing old animation
-        # =====================
-        glLevel.show_static()
-
-        # =======================================
-        # Do player movement and collisions check
-        # =======================================
-        if player_tick == 0:
-            if not glLevel.player.move(glLevel.beasts, glTemporaryItems):
-                game_over_reason = CC.GAME_OVER_EATEN
-            else:
-                glLevel.collect_treasures()
-
-            if glLevel.player.oldpos[0] == 0:
-                game_over_reason = CC.GAME_OVER_COMPLETE
-
-        # ================================================
-        # Drawing items in their positions
-        # First -- non-movable level blocks with animation
-        # ================================================
-        glLevel.show_animated(player_tick)
-
-        # ==================================================================
-        # Second -- draw temporary items and do collision check if necessary
-        # ==================================================================
-        for tempBlock in glTemporaryItems:
-            tempBlock.show(glMainCanvas, player_tick)
-            if tempBlock.died:
-                if tempBlock.underlay is not None:
-                    # TODO Check, whether we can move block_killing_action to TemporaryBlock class
-                    if not block_killing_action(tempBlock):
-                        game_over_reason = CC.GAME_OVER_STUCK
-                    glLevel[tempBlock.pos] = tempBlock.underlay
-                del glTemporaryItems[glTemporaryItems.index(tempBlock)]
-
-        # ===========================
-        # Third -- draw player sprite
-        # ===========================
-        glLevel.show_player(player_tick)
-
-        # ==================================================================
-        # Fourth -- move all beasts and again do collision check with player
-        #           More than, check player collision with deadly blocks
-        # ==================================================================
-        game_over_reason = \
-            (game_over_reason, CC.GAME_OVER_EATEN, CC.GAME_OVER_KILLED)[glLevel.live(beast_tick)]
+        # ====================================================
+        # Do all level actions, assigned to one single tick.
+        # Player and beasts ticks management performed at main
+        # module lifecycle.
+        # ====================================================
+        result = glLevel.live(player_tick, beast_tick)
+        game_over_reason = (result, game_over_reason)[result == CC.GAME_OVER_NOT_OVER]
 
         player_tick = (0, player_tick + 1)[player_tick < CC.STEP - 1]
         beast_tick = (0, beast_tick + 1)[beast_tick < CC.BEAST_STEP - 1]
@@ -297,7 +252,7 @@ while whatNext in (ACTION_NEXT, ACTION_RESTART):
         glClock.tick(CC.FPS)
 
     pygame.mixer.music.fadeout(500)
-    whatNext = game_over(game_over_reason)
+    what_next = game_over(game_over_reason)
 
 game_state["Progress"]["current level"], game_state["Progress"]["current song"] = \
     str(current_level), str(current_song)

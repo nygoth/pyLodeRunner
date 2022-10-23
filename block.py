@@ -244,3 +244,13 @@ class TemporaryBlock(AnimatedBlock):
         copied.underlay = self.underlay
 
         return copied
+
+    # TODO Not all temporary blocks are so deadly. Do corresponding check here
+    def is_killing(self, player_pos: list, beasts: list):
+        """Проверяем, не зажало ли игрока или монстра зарастающей стеной"""
+        if player_pos == self.pos:
+            return False
+        for monster in beasts:
+            if monster.pos == self.pos:
+                monster.die()
+        return True
