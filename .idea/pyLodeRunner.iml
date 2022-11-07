@@ -7,6 +7,7 @@
       <excludeFolder url="file://$MODULE_DIR$/.git (1)" />
       <excludePattern pattern="*.ini" />
       <excludePattern pattern=" *.xml" />
+      <excludePattern pattern=" *.iml" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
