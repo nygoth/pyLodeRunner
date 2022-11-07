@@ -98,6 +98,7 @@ class Level:
                 # на выход за границы массива
                 for ch, col in zip(line[0:CC.LEVEL_WIDTH + 1], range(CC.LEVEL_WIDTH + 1)):
                     exit_line.append(('.', ch)[ch in CC.EXIT_BLOCKS])
+                    static_line.append(('.', ch)[ch in CC.MAPPED_BLOCKS and ch not in CC.EXIT_BLOCKS])
 
                     if ch in animated:
                         self.animated_entities[str([row, col]) + ":" + ch] = \
@@ -121,8 +122,6 @@ class Level:
                     if ch == 'I':
                         self.player.pos = [row, col]
                         self.player.oldpos = [row, col]
-
-                    static_line.append(('.', ch)[ch in CC.MAPPED_BLOCKS and ch not in CC.EXIT_BLOCKS])
 
                 self.level.append(static_line)
                 self.exit.append(exit_line)
@@ -192,15 +191,13 @@ class Level:
         # =======================================
         # Do player movement and collisions check
         # =======================================
-        if player_tick == 0:
+        if not player_tick:
             if not self.player.move(self.beasts, self.temporary_items):
                 live_result = CC.GAME_OVER_EATEN
             else:
                 self.collect_treasures()
-
             # Row position at 0 is win position
-            if self.player.oldpos[0] == 0:
-                live_result = CC.GAME_OVER_COMPLETE
+            live_result = (live_result, CC.GAME_OVER_COMPLETE)[not self.player.oldpos[0]]
 
         # ===============================================
         # Check for player death at deadly block
@@ -223,7 +220,6 @@ class Level:
             tempBlock.show(self.canvas, player_tick)
             if tempBlock.died:
                 if tempBlock.underlay is not None:
-                    # TODO Check, whether we can move block_killing_action to TemporaryBlock class
                     if not tempBlock.is_killing(self.player.pos, self.beasts):
                         live_result = CC.GAME_OVER_STUCK
                     self[tempBlock.pos] = tempBlock.underlay
@@ -239,7 +235,7 @@ class Level:
         #           for death at deadly block. Draw them as well.
         # ========================================================
         for beast in self.beasts:
-            if beast_tick == 0:
+            if not beast_tick:
                 # Метод возвращает ложь, если монстр оказался в позиции игрока
                 # В нашей ситуации это означает съедение
                 if not beast.move(self.player.pos, self.beasts):
@@ -265,10 +261,15 @@ class Level:
                 # Все сокровища собраны, готовим выход
                 if self.treasures_count <= 0:
                     self.exit_appears_sound.play()
+                    #  Эта строка объединяет два массива. Там где в массиве exit не стоит точка, используется
+                    # символ этого массива, иначе -- исходного. Своеобразное наложение по маске.
                     self.level = [[elem[elem[1] != '.'] for elem in zip(level_row[0], level_row[1])]
                                   for level_row in zip(self.level, self.exit)]
                     self.prepare_static()
                     self.show_static()
+
+        # Возвращаем значение, чтобы в главном цикле можно было написать более лаконичный код
+        return CC.GAME_OVER_NOT_OVER
 
     @staticmethod
     def play_background_music(filename):
