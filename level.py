@@ -90,13 +90,13 @@ class Level:
         with open(filename, 'r') as lvl_stream:
             animated = CC.BLOCKS["animated"]
             # Цикл по строкам файла
-            for line, row in zip(lvl_stream, range(CC.LEVEL_HEIGHT + 1)):
+            for row, line in enumerate(lvl_stream):
                 static_line = list()
                 exit_line = list()
 
                 # Цикл по отдельным символам строки. Добавляем один символ, чтобы не писать в коде лишних проверок
                 # на выход за границы массива
-                for ch, col in zip(line[0:CC.LEVEL_WIDTH + 1], range(CC.LEVEL_WIDTH + 1)):
+                for col, ch in enumerate(line[0:CC.LEVEL_WIDTH + 1]):
                     exit_line.append(('.', ch)[ch in CC.EXIT_BLOCKS])
                     static_line.append(('.', ch)[ch in CC.MAPPED_BLOCKS and ch not in CC.EXIT_BLOCKS])
 
