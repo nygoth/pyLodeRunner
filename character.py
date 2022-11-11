@@ -81,7 +81,6 @@ class Character(block.Block):
         # Load all images as an animation sets
         super().__init__(None, position, subfolder)
         if isinstance(img, dict):
-
             for state in STATES.keys():
                 if state in img:
                     self.images[STATES[state]] = [block.Block(file, position, subfolder) for file in img[state]]
@@ -104,8 +103,7 @@ class Character(block.Block):
                     self.images[state] = block.TemporaryBlock((img[state], None), subfolder=subfolder,
                                                               animation_delay=6)
 
-            if attack_list[0] not in self.images and \
-                    attack_list[1] not in self.images:
+            if attack_list[0] not in self.images:
                 self.images[attack_list[0]] = block.TemporaryBlock((None, None), animation_delay=6)
 
             if attack_list[1] not in self.images:
@@ -127,10 +125,7 @@ class Character(block.Block):
     @staticmethod
     def __in_obstacle__(obstacles: list, pos: list):
         if obstacles is not None:
-            obst: Character
-            for obst in obstacles:
-                if pos == obst.pos:
-                    return True
+            return any((pos == obst.pos for obst in obstacles))
         return False
 
     def fall(self, obstacles: list = None):
@@ -142,9 +137,9 @@ class Character(block.Block):
 
         tmp_pos = [self.pos[0] + 1, self.pos[1]]
         if check_bounds(tmp_pos):
-            if self.game_field[tmp_pos] not in CC.SUPPORT_BLOCKS and \
-                    self.game_field[self.pos] not in CC.CARRY_BLOCKS and \
-                    not self.__in_obstacle__(obstacles, tmp_pos):
+            if all((self.game_field[tmp_pos] not in CC.SUPPORT_BLOCKS,
+                    self.game_field[self.pos] not in CC.CARRY_BLOCKS,
+                    not self.__in_obstacle__(obstacles, tmp_pos))):
                 # We are falling down, no other movement
                 self.move_state = STATE_FALL
                 self.move_direction = K_IDLE
@@ -157,7 +152,7 @@ class Character(block.Block):
 
         self.__set_state__()
 
-        if disp[0] != 0 and disp[1] != 0:
+        if disp[0] and disp[1]:
             return False  # Character can not move in two directions simultaneously
 
         tmp_pos = [self.pos[0] + disp[0], self.pos[1] + disp[1]]
@@ -168,7 +163,7 @@ class Character(block.Block):
         if disp[0] == -1 and self.game_field[self.pos] not in CC.CLIMB_BLOCKS:
             return False  # Impossible to move up
 
-        if obstacles is not None and self.__in_obstacle__(obstacles, tmp_pos):
+        if self.__in_obstacle__(obstacles, tmp_pos):
             return False
 
         if check_bounds(tmp_pos):
@@ -235,7 +230,7 @@ class Beast(Character):
         disp_y = player_pos[0] - self.pos[0]
         disp_x = player_pos[1] - self.pos[1]
 
-        if disp_x == 0 and disp_y == 0:
+        if not disp_x and not disp_y:
             return False
 
         disp_x = sign(disp_x)
@@ -267,10 +262,8 @@ class Beast(Character):
         return True
 
     def die(self):
-        if self.die_sound is not None:
-            self.die_sound.play()
-        self.pos[0] = self.oldpos[0] = self.spawn_pos[0]
-        self.pos[1] = self.oldpos[1] = self.spawn_pos[1]
+        self.die_sound is None or self.die_sound.play()
+        self.pos, self.oldpos = tuple((self.spawn_pos.copy(), )) * 2
 
 
 class Player(Character):
@@ -314,9 +307,9 @@ class Player(Character):
                   K_w: ("attack_right", +1)}
         for key in attack:
             if pressed_keys[key]:
-                if 0 <= self.pos[1] + attack[key][1] < CC.LEVEL_WIDTH and \
-                        self.game_field[(self.pos[0], self.pos[1] + attack[key][1])] == '.' and \
-                        self.game_field[(self.pos[0] + 1, self.pos[1] + attack[key][1])] in CC.DESTRUCTABLE_BLOCKS:
+                if all((0 <= self.pos[1] + attack[key][1] < CC.LEVEL_WIDTH,
+                        self.game_field[(self.pos[0], self.pos[1] + attack[key][1])] == '.',
+                        self.game_field[(self.pos[0] + 1, self.pos[1] + attack[key][1])] in CC.DESTRUCTABLE_BLOCKS)):
                     self.attack_sound is None or self.attack_sound.play()
                     fire = self.images[attack[key][0]].copy()
                     crack = self.cracked_block.copy()

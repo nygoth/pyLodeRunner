@@ -27,7 +27,7 @@ class Block(pygame.sprite.Sprite):
         if img is not None:
             if isinstance(img, str):
                 self.image = pygame.image.load(path.join(self.base_images_folder, img)).convert_alpha()
-            if isinstance(img, Block):
+            elif isinstance(img, Block):
                 self.image = img.image
         else:
             self.image = pygame.Surface((CC.BLOCK_WIDTH, CC.BLOCK_WIDTH))
@@ -41,10 +41,7 @@ class Block(pygame.sprite.Sprite):
         """Копирование текущего экземпляра в новый объект с возможностью отобразить зеркально."""
         copied = Block(None)
 
-        if xflip or yflip:
-            copied.image = pygame.transform.flip(self.image, xflip, yflip)
-        else:
-            copied.image = self.image.copy()
+        copied.image = (self.image.copy(), pygame.transform.flip(self.image, xflip, yflip))[xflip or yflip]
 
         return copied
 
@@ -85,11 +82,8 @@ class Button(Block):
     def copy(self, xflip=False, yflip=False, scale=1):
         copied = Button((None, None))
 
-        if xflip or yflip:
-            copied.images = [pygame.transform.flip(self.images[0], xflip, yflip),
-                             pygame.transform.flip(self.images[1], xflip, yflip)]
-        else:
-            copied.images = self.images.copy()
+        copied.images = [pygame.transform.flip(self.images[0], xflip, yflip),
+                         pygame.transform.flip(self.images[1], xflip, yflip)] if xflip or yflip else self.images.copy()
 
         copied.pressed_state = self.pressed_state
 
@@ -123,8 +117,7 @@ class AnimatedBlock(Block):
 
         super(AnimatedBlock, self).__init__(None, position, subfolder)
         if isinstance(img, (tuple, list)):
-            for file in img:
-                self.images.append(Block(file, position, subfolder))
+            self.images = [Block(file, position, subfolder) for file in img]
             self.single = False
 
     def get_image(self, tick):
@@ -139,7 +132,7 @@ class AnimatedBlock(Block):
                 if self.current_frame >= len(self.images) or not self.in_action:
                     self.current_frame = 0
 
-                if self.current_frame == 0:
+                if not self.current_frame:
                     self.in_action = not self.in_action
 
             return self.images[self.current_frame].image
@@ -161,10 +154,7 @@ class AnimatedBlock(Block):
         dst.in_action = self.in_action
 
         if self.single:
-            if xflip or yflip:
-                dst.image = pygame.transform.flip(self.image, xflip, yflip)
-            else:
-                dst.image = self.image.copy()
+            dst.image = (self.image.copy(), pygame.transform.flip(self.image, xflip, yflip))[xflip or yflip]
         else:
             dst.images = [pict.copy(xflip, yflip, scale) for pict in self.images]
 
@@ -217,18 +207,14 @@ class TemporaryBlock(AnimatedBlock):
                     if self.images_end is None:
                         self.died = True
                 else:  # Объект отыграл финальную анимацию и должен быть уничтожен
-                    if self.current_frame == 0:
-                        temp_img = self.images
-                        self.images = self.images_end
-                        self.images_end = temp_img
+                    if not self.current_frame:
+                        self.images, self.images_end = self.images_end, self.images
                         self.died = True
-                        return self.images_end[len(self.images_end) - 1].image
+                        return self.images_end[-1].image
 
             # Это условия начала воспроизведения новой анимации после паузы. Так они выполняются после
             # отработки get_image родителя
-            if not self.on_start and self.in_action and \
-                    self.current_frame == 0 and self.ticks == 0 and \
-                    not self.died:
+            if all((self.on_start, self.in_action, not self.current_frame, not self.ticks, not self.died)):
                 # Чтобы работал старый код, просто подставим анимацию финала вместо стартовой
                 self.images, self.images_end = self.images_end, self.images
 

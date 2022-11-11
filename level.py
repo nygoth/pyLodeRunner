@@ -120,8 +120,7 @@ class Level:
 
                     # Персонаж может быть только один, поэтому данный алгоритм вернёт последнее найденное положение
                     if ch == 'I':
-                        self.player.pos = [row, col]
-                        self.player.oldpos = [row, col]
+                        self.player.pos, self.player.oldpos = [[row, col]] * 2
 
                 self.level.append(static_line)
                 self.exit.append(exit_line)
