@@ -128,9 +128,8 @@ class AnimatedBlock(Block):
                 self.ticks += 1
             else:
                 self.ticks = 0
-                self.current_frame += 1
-                if self.current_frame >= len(self.images) or not self.in_action:
-                    self.current_frame = 0
+                self.current_frame = 0 \
+                    if self.current_frame >= len(self.images)-1 or not self.in_action else self.current_frame + 1
 
                 if not self.current_frame:
                     self.in_action = not self.in_action
@@ -178,7 +177,7 @@ class TemporaryBlock(AnimatedBlock):
         self.underlay = None
         self.sound = sound
         self.images_end = None
-        (img_start, img_end, *rest) = img
+        img_start, img_end, *rest = img
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
         if isinstance(img_end, (tuple, list)):

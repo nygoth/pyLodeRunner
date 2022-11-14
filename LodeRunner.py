@@ -59,8 +59,7 @@ def init_screen(width, height):
 def game_over(reason: int):
     """Действия, которые нужно выполнить при завершении игры (по любой причине)"""
     buttons = [btQuit, ]
-    scr_halfwidth = CC.LEVEL_WIDTH * CC.BLOCK_WIDTH / 2
-    scr_halfheight = CC.LEVEL_HEIGHT * CC.BLOCK_WIDTH / 2
+    scr_halfwidth, scr_halfheight = (_ * CC.BLOCK_WIDTH / 2 for _ in (CC.LEVEL_WIDTH, CC.LEVEL_HEIGHT))
 
     # Если игрок уровень проиграл, то нужно воспроизвести соответствующий звук
     # Кроме того, на экране заставки нужно добавить кнопку Restart
@@ -191,9 +190,7 @@ pygame.mixer.music.stop()
 while what_next in (ACTION_NEXT, ACTION_RESTART):
     glLevel.stop_all_sounds()
 
-    current_song += (what_next == ACTION_NEXT)
-    if current_song >= len(songs_list):
-        current_song = 0
+    current_song = (0, current_song + (what_next == ACTION_NEXT))[current_song < len(songs_list)-1]
     glLevel.play_background_music(path.join(music_dir, songs_list[current_song]))
 
     if what_next == ACTION_NEXT:
