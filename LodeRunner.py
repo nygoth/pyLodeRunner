@@ -242,8 +242,8 @@ while what_next in (ACTION_NEXT, ACTION_RESTART):
         result = glLevel.live(player_tick, beast_tick)
         game_over_reason = (result, game_over_reason)[result == CC.GAME_OVER_NOT_OVER]
 
-        player_tick = (0, player_tick + 1)[player_tick < CC.STEP - 1]
-        beast_tick = (0, beast_tick + 1)[beast_tick < CC.BEAST_STEP - 1]
+        player_tick = (player_tick + 1) * (player_tick < CC.STEP - 1)
+        beast_tick = (beast_tick + 1) * (beast_tick < CC.BEAST_STEP - 1)
 
         pygame.display.update()
         glClock.tick(CC.FPS)

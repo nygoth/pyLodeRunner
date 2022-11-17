@@ -51,9 +51,7 @@ class Level:
         self.canvas: pygame.Surface = canvas
         self.static_image: pygame.Surface = pygame.Surface(self.canvas.get_size()) if canvas is not None else None
 
-    def init(self,
-             done_sound=None,
-             exit_appears_sound=None):
+    def init(self, done_sound=None, exit_appears_sound=None):
         """Initialize object. This must be called after pygame init and screen canvas creation.
             So, this is called from construcrtor internally, if canvas provided, or must be called
             separately and explicitly after "set_canvas" call."""
@@ -141,8 +139,8 @@ class Level:
 
         # Clean game screen
         canvas.fill((0, 0, 0))
-        for row, y in zip(self.level, range(CC.LEVEL_HEIGHT + 1)):
-            for blk, x in zip(row, range(CC.LEVEL_WIDTH + 1)):
+        for y, row in enumerate(self.level):
+            for x, blk in enumerate(row):
                 # Используем метод get. Он не выдаёт ошибок, если индекс отсутствует, а возвращает None, что удобнее
                 cur_block: block.Block = self.sprites.get(blk)
                 cur_block is None or cur_block.show(canvas, [y, x])
