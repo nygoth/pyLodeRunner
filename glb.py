@@ -4,7 +4,6 @@ from os import path
 import pygame
 from pygame.locals import *
 import random
-import CC
 
 
 def load_sound(filename):
@@ -28,3 +27,14 @@ def check_bounds(pos: list):
 
 def sign(x):
     return -1 if x < 0 else 1 if x > 0 else 0
+
+
+def get_subset_by_type(db:dict, request_type):
+    """Возвращает список блоков только заданного типа. db -- CC.BLOCKS"""
+    res = dict()
+    for leaf_key in db:
+        if request_type in db[leaf_key]["type"]:
+            res.update({leaf_key: db[leaf_key]})
+
+    return res
+

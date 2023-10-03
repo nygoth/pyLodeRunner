@@ -4,6 +4,7 @@
 
 from os import path
 import json
+from glb import *
 
 
 # Статусы завершения игры
@@ -50,7 +51,12 @@ BEAST_STEP = int(FPS / BEAST_TEMPO)
 BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
 PLAYER_ANIMATION_STEP = BLOCK_WIDTH / STEP  # Смещение объекта в пикселах за один шаг анимации
 
-# Спрайты блоков структуры уровня
+# Спрайты блоков структуры уровня.
+# Есть у следующие типы блоков:
+#   static     -- статичные неанимированные блоки с разными свойствами;
+#   animated   -- статичные анимированные блоки;
+#   temporary  -- временные анимированные спрайты. Используются для анимации различных событий.
+#   characters -- спрайты персонажей. Игрока и монстров.
 # Статичные блоки описываются типами, картинкой и опциональной ссылкой на временный блок, который используется
 # (рисуется поверх), если с этим элементом что-то делают. Например, игрок может разрушать какие-то блоки.
 # Причём, можно запрограммировать для разных разрушаемых блоков разные временные блоки с анимацией
@@ -91,16 +97,16 @@ BLOCKS = {"static": {'Z': {"type": ("solid", "support", "destructable", "mapped"
                      },
 
           # Анимированные неподвижные блоки уровня.
-          # [0] Тип: Treasure -- собираемые блоки
-          #          Animation -- просто анимированный блок
-          # [1] Список кадров
-          # [2] Задержка между кадрами анимации относительно FPS, больше значение - выше задержка.
+          # Тип: treasure -- собираемые блоки
+          #          иное     -- просто анимированный блок
+          # [animation][idle] Список кадров
+          # [animation][speed] Задержка между кадрами анимации относительно FPS, больше значение - выше задержка.
           #       Анимация воспроизводится от первого кадра к последнему и либо останавливается на указанное время.
-          # [3] Пауза перед началом следующего цикла анимации
+          # [animation][delay] Пауза перед началом следующего цикла анимации
           #       Задержку и паузу можно указать простым числом, а можно интервалом (минимум, максимум, шаг),
           #       из которого выбираются (случайным образом) паузы между фазами анимации блока.
           #       Так отсутствует раздражающая синхронность в анимации однотипных блоков.
-          # [4] Звук, который проигрывается, когда игрок или чудище попадают на этот блок (именно в клеточку
+          # [sounds][over] Звук, который проигрывается, когда игрок или чудище попадают на этот блок (именно в клеточку
           #       с этим блоком, а не стоят сверху).
           "animated": {'+': {"type": ("treasure", ),    # Collectible item
                              "folder": "Treasure",
@@ -222,11 +228,12 @@ BLOCKS = {"static": {'Z': {"type": ("solid", "support", "destructable", "mapped"
           # Временные блоки уровня.
           # Возникают на какое-то время вместо какого-то постоянного блока. Меняют его вид и свойство.
           # Обычно, анимированны. Именованы, имена используются как ссылки на них.
-          # [0] Анимация появления
-          # [1] Анимация исчезания
-          # [2] Время жизни
+          # [animation][appear] Анимация появления
+          # [animation][disappear] Анимация исчезания
+          # [lifetime] Время жизни
           "temporary": {"cracked": {"type": ("virtual", ),
                                     "folder": "Animation",
+                                    "lifetime": 400,
                                     "animation": {"appear": ("cracked_block0.png",
                                                              "cracked_block1.png",
                                                              "cracked_block2.png",
@@ -243,147 +250,157 @@ BLOCKS = {"static": {'Z': {"type": ("solid", "support", "destructable", "mapped"
                                                                 "cracked_block1.png",
                                                                 "cracked_block0.png",
                                                                 ),
-                                                  "lifetime": 400,
                                                   },
                                     },
-                        }
+                        },
+
+          # Спрайт игрока. Относительно каталога images\Player
+          # [idle_delay] Задержка анимации в состоянии ожидания
+          # [fall_delay] Задержка анимации в состоянии падения
+          "characters": {"I": {"type": ("player",),
+                               "folder": "Player",
+                               "idle_delay": 300,
+                               "fall_delay": 100,
+                               "sounds": {"steps": "footsteps.wav",
+                                          "attack": "attack.wav",
+                                          "eaten": "eaten.wav",
+                                          "killed": "beast die.wav",
+                                          "stuck": "beast die.wav",
+                                          "leave": "user end.wav"
+                                          },
+                               "animation": {"idle": ("player_idle0.png",
+                                                      "player_idle1.png",
+                                                      "player_idle2.png",
+                                                      "player_idle3.png",
+                                                      ),
+                                             "fall": ("player_fall0.png",
+                                                      "player_fall1.png",
+                                                      "player_fall2.png",
+                                                      "player_fall3.png",
+                                                      ),
+                                             "hang": ("player_hang_idle0.png",
+                                                      "player_hang_idle1.png",
+                                                      ),
+                                             "walk_right": ("player_walk0.png",
+                                                            "player_walk1.png",
+                                                            "player_walk2.png",
+                                                            "player_walk3.png",
+                                                            "player_walk4.png",
+                                                            "player_walk5.png",
+                                                            "player_walk6.png",
+                                                            "player_walk7.png"),
+                                             "walk_hang_right": ("character_maleAdventurer_hang0.png",
+                                                                 "character_maleAdventurer_hang1.png",
+                                                                 "character_maleAdventurer_hang2.png",
+                                                                 "character_maleAdventurer_hang3.png",
+                                                                 ),
+                                             "climb_up": ("player_climb0.png",
+                                                          "player_climb1.png",
+                                                          "player_climb2.png",
+                                                          "player_climb3.png",
+                                                          "player_climb4.png",
+                                                          "player_climb5.png",
+                                                          "player_climb6.png",
+                                                          "player_climb7.png",
+                                                          ),
+                                             "attack_left": ("attack0.png",
+                                                             "attack1.png",
+                                                             "attack2.png",
+                                                             "attack3.png",
+                                                             "attack3.png",
+                                                             "attack4.png",
+                                                             "attack5.png",
+                                                             "attack6.png",
+                                                             )
+                                             }
+                               },
+
+                         # Кадры для анимации монстров. Относительно каталога images\Beast
+                         'X': {"type": ("beast", "npc"),
+                               "folder": "Beast",
+                               "idle_delay": 250,
+                               "fall_delay": 100,
+                               "sounds": {"death": "beast die.wav"},
+                               "animation": {"idle": ("zombie_idle0.png",
+                                                      "zombie_idle1.png",
+                                                      "zombie_idle0.png",
+                                                      "zombie_idle2.png",),
+                                             "fall": ("zombie_fall0.png",
+                                                      "zombie_fall1.png",
+                                                      "zombie_fall2.png",
+                                                      "zombie_fall1.png",),
+                                             "hang": ("zombie_hang_idle0.png",
+                                                      "zombie_hang_idle1.png",
+                                                      "zombie_hang_idle0.png",
+                                                      "zombie_hang_idle2.png",),
+                                             "walk_right": ("zombie_walk0.png",
+                                                            "zombie_walk1.png",
+                                                            "zombie_walk2.png",
+                                                            "zombie_walk3.png",
+                                                            "zombie_walk4.png",
+                                                            "zombie_walk5.png",
+                                                            "zombie_walk6.png",
+                                                            "zombie_walk7.png",),
+                                             "walk_hang_right": ("zombie_hang0.png",
+                                                                 "zombie_hang1.png",
+                                                                 "zombie_hang2.png",
+                                                                 "zombie_hang3.png",
+                                                                 "zombie_hang4.png",
+                                                                 "zombie_hang5.png",
+                                                                 "zombie_hang6.png",
+                                                                 "zombie_hang7.png",),
+                                             "climb_up": ("zombie_climb0.png",
+                                                          "zombie_climb1.png",
+                                                          "zombie_climb2.png",
+                                                          "zombie_climb3.png",
+                                                          "zombie_climb4.png",
+                                                          "zombie_climb5.png",
+                                                          "zombie_climb6.png",
+                                                          "zombie_climb7.png",),
+                                             },
+                               },
+                         },
           }
 
-# TODO Итак, структура игрока -- оптимальная. Сделать все спрайты по этому типу.
-#      Привести все создания к одному хранилищу. Игрок и NPC хранятся там. Просто добавить флаг, какие кто.
-# Кадры анимации для спрайта игрока. Относительно каталога images\Player
-PLAYER_UNIT = {"type": ("player", ),
-               "folder": "Player",
-               "idle_delay": 300,
-               "fall_delay": 100,
-               "sounds": {"steps": "footsteps.wav",
-                          "attack": "attack.wav",
-                          "eaten": "eaten.wav",
-                          "killed": "beast die.wav",
-                          "stuck": "beast die.wav",
-                          "leave": "user end.wav"
-                          },
-               "animation": {"idle": ("player_idle0.png",
-                                      "player_idle1.png",
-                                      "player_idle2.png",
-                                      "player_idle3.png",
-                                      ),
-                             "fall": ("player_fall0.png",
-                                      "player_fall1.png",
-                                      "player_fall2.png",
-                                      "player_fall3.png",
-                                      ),
-                             "hang": ("player_hang_idle0.png",
-                                      "player_hang_idle1.png",
-                                      ),
-                             "walk_right": ("player_walk0.png",
-                                            "player_walk1.png",
-                                            "player_walk2.png",
-                                            "player_walk3.png",
-                                            "player_walk4.png",
-                                            "player_walk5.png",
-                                            "player_walk6.png",
-                                            "player_walk7.png"),
-                             "walk_hang_right": ("character_maleAdventurer_hang0.png",
-                                                 "character_maleAdventurer_hang1.png",
-                                                 "character_maleAdventurer_hang2.png",
-                                                 "character_maleAdventurer_hang3.png",
-                                                 ),
-                             "climb_up": ("player_climb0.png",
-                                          "player_climb1.png",
-                                          "player_climb2.png",
-                                          "player_climb3.png",
-                                          "player_climb4.png",
-                                          "player_climb5.png",
-                                          "player_climb6.png",
-                                          "player_climb7.png",
-                                          ),
-                             "attack_left": ("attack0.png",
-                                             "attack1.png",
-                                             "attack2.png",
-                                             "attack3.png",
-                                             "attack3.png",
-                                             "attack4.png",
-                                             "attack5.png",
-                                             "attack6.png",
-                                             )
-                             }
-               }
+PLAYER_UNIT = BLOCKS["characters"]["I"]
+BEAST_UNITS = get_subset_by_type(BLOCKS["characters"], "beast")
 
-# Кадры для анимации монстров. Относительно каталога images\Beast
-BEAST_UNITS = {'X': {"type": ("beast", "ai"),
-                     "folder": "Beast",
-                     "idle_delay": 250,
-                     "fall_delay": 100,
-                     "sounds": {"death": "beast die.wav"},
-                     "animation": {"idle": ("zombie_idle0.png",
-                                            "zombie_idle1.png",
-                                            "zombie_idle0.png",
-                                            "zombie_idle2.png",
-                                           ),
-                                   "fall": ("zombie_fall0.png",
-                                            "zombie_fall1.png",
-                                            "zombie_fall2.png",
-                                            "zombie_fall1.png",),
-                                   "hang": ("zombie_hang_idle0.png",
-                                            "zombie_hang_idle1.png",
-                                            "zombie_hang_idle0.png",
-                                            "zombie_hang_idle2.png",),
-                                   "walk_right": ("zombie_walk0.png",
-                                                  "zombie_walk1.png",
-                                                  "zombie_walk2.png",
-                                                  "zombie_walk3.png",
-                                                  "zombie_walk4.png",
-                                                  "zombie_walk5.png",
-                                                  "zombie_walk6.png",
-                                                  "zombie_walk7.png",),
-                                   "walk_hang_right": ("zombie_hang0.png",
-                                                       "zombie_hang1.png",
-                                                       "zombie_hang2.png",
-                                                       "zombie_hang3.png",
-                                                       "zombie_hang4.png",
-                                                       "zombie_hang5.png",
-                                                       "zombie_hang6.png",
-                                                       "zombie_hang7.png",
-                                                       ),
-                                   "climb_up": ("zombie_climb0.png",
-                                                "zombie_climb1.png",
-                                                "zombie_climb2.png",
-                                                "zombie_climb3.png",
-                                                "zombie_climb4.png",
-                                                "zombie_climb5.png",
-                                                "zombie_climb6.png",
-                                                "zombie_climb7.png",)
-                                   },
-                     },
-               }
-
-SOLID_BLOCKS = ('Z', 'O', '=')
+SOLID_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "solid")) # ('Z', 'O', '=')
 """Непроницаемые блоки"""
-DESTRUCTABLE_BLOCKS = ('Z',)
+DESTRUCTABLE_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "destructable")) # ('Z',)
 """Разрушаемые блоки"""
-SUPPORT_BLOCKS = ('Z', 'O', 'H', 'P', 'T', '=')
+SUPPORT_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "support")) # ('Z', 'O', 'H', 'P', 'T', '=')
 """Блоки, на которых можно стоять не падая"""
-CARRY_BLOCKS = ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')
+CARRY_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "carry")) # ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')
 """Блоки, на фоне которых можно стоять и не падать"""
-HANG_BLOCKS = ('-', '_',)
+HANG_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "hang")) # ('-', '_',)
 """Блоки, на которых можно висеть"""
-CLIMB_BLOCKS = ('H', 'P', 'T', '/', '\\', 'J', 'L')
+CLIMB_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "climb")) # ('H', 'P', 'T', '/', '\\', 'J', 'L')
 """Блоки, по которым можно лезть вверх и вниз"""
-VIRTUAL_BLOCKS = ('U',)
+VIRTUAL_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "virtual")) # ('U',)
 """Блоки, которые мираж"""
-TREASURE_BLOCKS = ('+',)
+TREASURE_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "treasure")) # ('+',)
 """Блоки-сокровища"""
-EXIT_BLOCKS = ('P', '_',)
+EXIT_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "exit")) # ('P', '_',)
 """Блоки, появляющиеся, когда все сокровища собраны"""
-BEAST_BLOCKS = ('X',)
+BEAST_BLOCKS = list(get_subset_by_type(BLOCKS["characters"], "beast")) # ('X',)
 """Символы, помечающие монстров"""
-DEADLY_BLOCKS = ('*', '~', '0',)
+DEADLY_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "deadly")) # ('*', '~', '0',)
 """Смертельные блоки. Игрок и монстры умирают, находясь на них"""
 
-MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
+MAPPED_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                  "mapped"))
 """Блоки, хранящиеся в карте проверки"""
-
 
 def init_config(game_state, config, defaults: tuple = (-1, -1)):
     """Загрузка или установка конфигурации по умолчанию и создание файлов конфигурации"""

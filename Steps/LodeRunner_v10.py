@@ -1,12 +1,13 @@
 # LodeRunner clone game
-# This project is for studying python programming
+# Проект по освоению программирования на Python'е
 
-# V 1.0
-# Load level file and show it with text symbols
+# Шаг 1.0
+# Загрузка уровня и вывод его текстовыми символами
 
-# Goal is to learn how to read from text file and
-# to write basic output module which then will be
-# replaced by sprite graphics
+# Цель: 
+# Научиться чтению из текстового файла и создание
+# базового модуля вывода, который затем будет
+# переписан под графику.
 
 def load_level(filename):
     game_level=list()

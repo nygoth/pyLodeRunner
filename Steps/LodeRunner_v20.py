@@ -1,11 +1,11 @@
 # LodeRunner clone game
-# This project is for studying python programming
+# Проект по освоению программирования на Python'е
 
-# V 2.0
-# Load level file and show it with sprites in window
+# Шаг 2.0
+# Загрузка уровня и вывод его спрайтами в окне
 
-# Goal is to learn how to use pygame
-# to show static graphics
+# Цель: научиться использовать модуль pygame
+# для вывода простой графики
 import sys
 
 import pygame
@@ -14,7 +14,7 @@ from pygame.locals import *
 class Block(pygame.sprite.Sprite):
     def __init__(self, img):
         super().__init__()
-        self.image = pygame.image.load("images\\" + img)
+        self.image = pygame.image.load("..\\images\\" + img)
         self.size = self.image.get_size()
         self.rect = self.image.get_rect(center=(self.size[0] / 2, self.size[1] / 2))
 
@@ -53,14 +53,14 @@ def show_level(canvas, level, sprites):
     pygame.display.update()
 
 
-level_blocks = {'Z':Block("brick.png"),
+level_blocks = {'Z':Block("block.png"),
                 'H':Block("ladder.png"),
-                'O':Block("brick_solid.png"),
+                'O':Block("solid.png"),
                 '-':Block("bar.png"),
                 'P':Block("exit_ladder.png"),
-                '+':Block("treasure.png"),
-                'X':Runner("beast.png"),
-                'I':Runner("player.png")
+                '+':Block("Treasure\\treasure0.png"),
+                'X':Runner("Beast\\zombie_idle0.png"),
+                'I':Runner("Player\\player_idle0.png")
                 }
 
 currentLevel = load_level("01.lvl")
