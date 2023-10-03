@@ -24,6 +24,9 @@
  Плюс -- новый формат уровней. Помимо символов блоков нужно сделать такую же по размеру таблицу,
  которая будет задавать какие-то атрибуты блоков. Как минимум, группировку нескольких блоков в одну группу анимации.
  Чтобы верёвки, например, колебались каждая со своей скоростью.
+
+ TODO: К коррекции на сейчас -- переделать формат хранения информации о спрайтах. Унифицировать. Сейчас что-то
+       нумерованный массив, что-то -- хэши. Сделать всё однотипными хэшами.
 """
 
 from os import walk
@@ -190,11 +193,11 @@ pygame.mixer.music.stop()
 while what_next in (ACTION_NEXT, ACTION_RESTART):
     glLevel.stop_all_sounds()
 
-    current_song = (0, current_song + (what_next == ACTION_NEXT))[current_song < len(songs_list)-1]
+    current_song = (current_song + (what_next == ACTION_NEXT)) * (current_song < len(songs_list)-1)
     glLevel.play_background_music(path.join(music_dir, songs_list[current_song]))
 
     if what_next == ACTION_NEXT:
-        current_level = (0, current_level + 1)[current_level < len(levels_list) - 1]
+        current_level = (current_level + 1) * (current_level < len(levels_list) - 1)
     what_next = ACTION_RESTART
 
     # Сразу нужно сохранить прогресс. Мало ли, выключится свет, слетит игра -- игрок должен вернуться именно на тот
