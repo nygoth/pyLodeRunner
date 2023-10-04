@@ -253,7 +253,7 @@ class Beast(Character):
                 self.move_direction = k_horiz
                 return True
 
-        self.idioticy = self.idioticy + 1 if self.idioticy < self.range else 0
+        self.idioticy = (self.idioticy + 1) * (self.idioticy < self.range)
         if self.move_direction != K_IDLE:
             if not super().move(MOTION[self.move_direction], beasts):
                 self.move_direction = ANTIMOTION[self.move_direction]
@@ -284,10 +284,10 @@ class Player(Character):
         # TODO Все временные блоки, ассоциированные с разрушаемыми, должны читаться и создаваться
         # TODO где-то вне. А при атаке игрока должен вставляться именно тот блок, который соответствует
         # TODO разрушаемому.
-        cracked = CC.BLOCKS["temporary"][CC.BLOCKS["static"]["Z"][1]]
-        self.cracked_block = block.TemporaryBlock(cracked,
-                                                  subfolder="Animation", animation_delay=cracked[2] / 100,
-                                                  animation_pause=cracked[2])
+        cracked = CC.BLOCKS["temporary"][CC.BLOCKS["static"]["Z"]["overlay"]]
+        self.cracked_block = block.TemporaryBlock((cracked["animation"]["appear"], cracked["animation"]["disappear"]),
+                                                  subfolder=cracked["folder"], animation_delay=cracked["lifetime"] / 100,
+                                                  animation_pause=cracked["lifetime"])
 
     def move(self, obstacles: list = None, temporary_items: list = None):
         pressed_keys = pygame.key.get_pressed()

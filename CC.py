@@ -7,6 +7,38 @@ import json
 from glb import *
 
 
+def __fill_level_structure_constants():
+    global PLAYER_UNIT, BEAST_UNITS, SOLID_BLOCKS, DESTRUCTABLE_BLOCKS, SUPPORT_BLOCKS, CARRY_BLOCKS, HANG_BLOCKS
+    global CLIMB_BLOCKS, VIRTUAL_BLOCKS, TREASURE_BLOCKS, EXIT_BLOCKS, BEAST_BLOCKS, DEADLY_BLOCKS, MAPPED_BLOCKS
+    global BLOCKS
+
+    PLAYER_UNIT = BLOCKS["characters"]["I"]
+    BEAST_UNITS = get_subset_by_type(BLOCKS["characters"], "beast")
+    SOLID_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                           "solid"))  # ('Z', 'O', '=')
+    DESTRUCTABLE_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                                  "destructable"))  # ('Z',)
+    SUPPORT_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                             "support"))  # ('Z', 'O', 'H', 'P', 'T', '=')
+    CARRY_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                           "carry"))  # ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')
+    HANG_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                          "hang"))  # ('-', '_',)
+    CLIMB_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                           "climb"))  # ('H', 'P', 'T', '/', '\\', 'J', 'L')
+    VIRTUAL_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                             "virtual"))  # ('U',)
+    TREASURE_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                              "treasure"))  # ('+',)
+    EXIT_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                          "exit"))  # ('P', '_',)
+    BEAST_BLOCKS = list(get_subset_by_type(BLOCKS["characters"], "beast"))  # ('X',)
+    DEADLY_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                            "deadly"))  # ('*', '~', '0',)
+    MAPPED_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
+                                            "mapped"))
+
+
 # Статусы завершения игры
 GAME_OVER_NOT_OVER = 0  # Игра продолжается
 GAME_OVER_COMPLETE = 1  # Уровень пройден
@@ -231,7 +263,7 @@ BLOCKS = {"static": {'Z': {"type": ("solid", "support", "destructable", "mapped"
           # [animation][appear] Анимация появления
           # [animation][disappear] Анимация исчезания
           # [lifetime] Время жизни
-          "temporary": {"cracked": {"type": ("virtual", ),
+          "temporary": {"cracked": {"type": ("deadly", ),
                                     "folder": "Animation",
                                     "lifetime": 400,
                                     "animation": {"appear": ("cracked_block0.png",
@@ -362,52 +394,41 @@ BLOCKS = {"static": {'Z': {"type": ("solid", "support", "destructable", "mapped"
                          },
           }
 
-PLAYER_UNIT = BLOCKS["characters"]["I"]
-BEAST_UNITS = get_subset_by_type(BLOCKS["characters"], "beast")
+PLAYER_UNIT = dict()
+BEAST_UNITS = dict()
 
-SOLID_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "solid")) # ('Z', 'O', '=')
+SOLID_BLOCKS = list()
 """Непроницаемые блоки"""
-DESTRUCTABLE_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "destructable")) # ('Z',)
+DESTRUCTABLE_BLOCKS = list()
 """Разрушаемые блоки"""
-SUPPORT_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "support")) # ('Z', 'O', 'H', 'P', 'T', '=')
+SUPPORT_BLOCKS = list()
 """Блоки, на которых можно стоять не падая"""
-CARRY_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "carry")) # ('H', '-', '_', 'P', 'T', '/', '\\', 'J', 'L')
+CARRY_BLOCKS = list()
 """Блоки, на фоне которых можно стоять и не падать"""
-HANG_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "hang")) # ('-', '_',)
+HANG_BLOCKS = list()
 """Блоки, на которых можно висеть"""
-CLIMB_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "climb")) # ('H', 'P', 'T', '/', '\\', 'J', 'L')
+CLIMB_BLOCKS = list()
 """Блоки, по которым можно лезть вверх и вниз"""
-VIRTUAL_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "virtual")) # ('U',)
+VIRTUAL_BLOCKS = list()
 """Блоки, которые мираж"""
-TREASURE_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "treasure")) # ('+',)
+TREASURE_BLOCKS = list()
 """Блоки-сокровища"""
-EXIT_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "exit")) # ('P', '_',)
+EXIT_BLOCKS = list()
 """Блоки, появляющиеся, когда все сокровища собраны"""
-BEAST_BLOCKS = list(get_subset_by_type(BLOCKS["characters"], "beast")) # ('X',)
+BEAST_BLOCKS = list()
 """Символы, помечающие монстров"""
-DEADLY_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "deadly")) # ('*', '~', '0',)
+DEADLY_BLOCKS = list()
 """Смертельные блоки. Игрок и монстры умирают, находясь на них"""
-
-MAPPED_BLOCKS = list(get_subset_by_type({**BLOCKS["static"], **BLOCKS["animated"], **BLOCKS["characters"]},
-                                  "mapped"))
+MAPPED_BLOCKS = list()
 """Блоки, хранящиеся в карте проверки"""
+
+__fill_level_structure_constants()
+
 
 def init_config(game_state, config, defaults: tuple = (-1, -1)):
     """Загрузка или установка конфигурации по умолчанию и создание файлов конфигурации"""
-    global BLOCKS, PLAYER_UNIT, BLOCK_WIDTH, FPS, BEAST_STEP, PLAYER_ANIMATION_STEP
-    global BEAST_UNITS, LEVEL_HEIGHT, LEVEL_WIDTH, STEP, TEMPO, BEAST_TEMPO, BEAST_ANIMATION_STEP
-    global SOLID_BLOCKS, DESTRUCTABLE_BLOCKS, SUPPORT_BLOCKS, CARRY_BLOCKS, HANG_BLOCKS, CLIMB_BLOCKS
-    global VIRTUAL_BLOCKS, TREASURE_BLOCKS, EXIT_BLOCKS, BEAST_BLOCKS, DEADLY_BLOCKS, MAPPED_BLOCKS
+    global BLOCKS, BLOCK_WIDTH, FPS, BEAST_STEP, PLAYER_ANIMATION_STEP
+    global LEVEL_HEIGHT, LEVEL_WIDTH, STEP, TEMPO, BEAST_TEMPO, BEAST_ANIMATION_STEP
 
     (current_level, current_song) = defaults
 
@@ -423,12 +444,7 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
     if path.exists(GAME_CONFIG_FILE):
         config.read(GAME_CONFIG_FILE)
         BLOCKS = json.loads(
-            config.get("Blocks", "BLOCKS", fallback=json.dumps(BLOCKS)).replace("'", "\""))
-
-        PLAYER_UNIT = json.loads(
-            config.get("Characters", "PLAYER UNIT", fallback=json.dumps(PLAYER_UNIT)).replace("'", "\""))
-        BEAST_UNITS = json.loads(
-            config.get("Characters", "BEAST UNITS", fallback=json.dumps(BEAST_UNITS)).replace("'", "\""))
+            config.get("Entities", "BLOCKS", fallback=json.dumps(BLOCKS)).replace("'", "\""))
 
         BLOCK_WIDTH = int(config.get("Geometry", "BLOCK WIDTH", fallback=BLOCK_WIDTH))
         LEVEL_WIDTH = int(config.get("Geometry", "LEVEL WIDTH", fallback=LEVEL_WIDTH))
@@ -438,30 +454,8 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
         TEMPO = int(config.get("Game", "TEMPO", fallback=TEMPO))
         BEAST_TEMPO = int(config.get("Game", "BEAST TEMPO", fallback=BEAST_TEMPO))
 
-        SOLID_BLOCKS = json.loads(
-            config.get("Structure", "SOLID BLOCKS", fallback=json.dumps(SOLID_BLOCKS)).replace("'", "\""))
-        DESTRUCTABLE_BLOCKS = json.loads(
-            config.get("Structure", "DESTRUCTABLE BLOCKS", fallback=json.dumps(DESTRUCTABLE_BLOCKS)).replace("'", "\""))
-        SUPPORT_BLOCKS = json.loads(
-            config.get("Structure", "SUPPORT BLOCKS", fallback=json.dumps(SUPPORT_BLOCKS)).replace("'", "\""))
-        CARRY_BLOCKS = json.loads(
-            config.get("Structure", "CARRY BLOCKS", fallback=json.dumps(CARRY_BLOCKS)).replace("'", "\""))
-        HANG_BLOCKS = json.loads(
-            config.get("Structure", "HANG BLOCKS", fallback=json.dumps(HANG_BLOCKS)).replace("'", "\""))
-        CLIMB_BLOCKS = json.loads(
-            config.get("Structure", "CLIMB BLOCKS", fallback=json.dumps(CLIMB_BLOCKS)).replace("'", "\""))
-        VIRTUAL_BLOCKS = json.loads(
-            config.get("Structure", "VIRTUAL BLOCKS", fallback=json.dumps(VIRTUAL_BLOCKS)).replace("'", "\""))
-        TREASURE_BLOCKS = json.loads(
-            config.get("Structure", "TREASURE BLOCKS", fallback=json.dumps(TREASURE_BLOCKS)).replace("'", "\""))
-        EXIT_BLOCKS = json.loads(
-            config.get("Structure", "EXIT BLOCKS", fallback=json.dumps(EXIT_BLOCKS)).replace("'", "\""))
-        BEAST_BLOCKS = json.loads(
-            config.get("Structure", "BEAST BLOCKS", fallback=json.dumps(BEAST_BLOCKS)).replace("'", "\""))
-        DEADLY_BLOCKS = json.loads(
-            config.get("Structure", "DEADLY BLOCKS", fallback=json.dumps(DEADLY_BLOCKS)).replace("'", "\""))
+        __fill_level_structure_constants()
 
-        MAPPED_BLOCKS = SOLID_BLOCKS + SUPPORT_BLOCKS + CARRY_BLOCKS + VIRTUAL_BLOCKS + DEADLY_BLOCKS
         FPS = TEMPO * STEP
         BEAST_STEP = int(FPS / BEAST_TEMPO)
         BEAST_ANIMATION_STEP = BLOCK_WIDTH / BEAST_STEP  # Смещение объекта в пикселах за один шаг анимации
@@ -469,9 +463,7 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
     else:
         config.add_section("Game")
         config.add_section("Geometry")
-        config.add_section("Characters")
-        config.add_section("Blocks")
-        config.add_section("Structure")
+        config.add_section("Entities")
 
         config["Game"]["STEP"] = str(STEP)
         config["Game"]["TEMPO"] = str(TEMPO)
@@ -479,22 +471,11 @@ def init_config(game_state, config, defaults: tuple = (-1, -1)):
         config["Geometry"]["BLOCK WIDTH"] = str(BLOCK_WIDTH)
         config["Geometry"]["LEVEL WIDTH"] = str(LEVEL_WIDTH)
         config["Geometry"]["LEVEL HEIGHT"] = str(LEVEL_HEIGHT)
-        config["Blocks"]["BLOCKS"] = json.dumps(BLOCKS)
-        config["Characters"]["PLAYER UNIT"] = json.dumps(PLAYER_UNIT)
-        config["Characters"]["BEAST UNITS"] = json.dumps(BEAST_UNITS)
-        config["Structure"]["SOLID BLOCKS"] = json.dumps(SOLID_BLOCKS)
-        config["Structure"]["DESTRUCTABLE BLOCKS"] = json.dumps(DESTRUCTABLE_BLOCKS)
-        config["Structure"]["SUPPORT BLOCKS"] = json.dumps(SUPPORT_BLOCKS)
-        config["Structure"]["CARRY BLOCKS"] = json.dumps(CARRY_BLOCKS)
-        config["Structure"]["HANG BLOCKS"] = json.dumps(HANG_BLOCKS)
-        config["Structure"]["CLIMB BLOCKS"] = json.dumps(CLIMB_BLOCKS)
-        config["Structure"]["VIRTUAL BLOCKS"] = json.dumps(VIRTUAL_BLOCKS)
-        config["Structure"]["TREASURE BLOCKS"] = json.dumps(TREASURE_BLOCKS)
-        config["Structure"]["EXIT BLOCKS"] = json.dumps(EXIT_BLOCKS)
-        config["Structure"]["BEAST BLOCKS"] = json.dumps(BEAST_BLOCKS)
-        config["Structure"]["DEADLY BLOCKS"] = json.dumps(DEADLY_BLOCKS)
+        config["Entities"]["BLOCKS"] = json.dumps(BLOCKS, indent='\t')
 
         with open(GAME_CONFIG_FILE, "w") as config_file:
             config.write(config_file)
 
     return current_level, current_song
+
+

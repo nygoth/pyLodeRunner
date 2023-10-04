@@ -56,7 +56,7 @@ class Level:
             So, this is called from construcrtor internally, if canvas provided, or must be called
             separately and explicitly after "set_canvas" call."""
         solid = CC.BLOCKS["static"]
-        self.sprites = {ch: block.Block(solid[ch][0]) for ch in solid}
+        self.sprites = {ch: block.Block(solid[ch]["img"], subfolder=solid[ch]["folder"]) for ch in solid}
         self.level_end_sound = load_sound((self.level_end_sound_filename, done_sound)[done_sound is not None])
         self.exit_appears_sound = \
             load_sound((self.exit_appears_sound_filename, exit_appears_sound)[exit_appears_sound is not None])
@@ -100,17 +100,18 @@ class Level:
 
                     if ch in animated:
                         self.animated_entities[str([row, col]) + ":" + ch] = \
-                            block.AnimatedBlock(animated[ch][1], [row, col],
-                                                subfolder=animated[ch][0],
-                                                animation_delay=to_number(animated[ch][2]),
-                                                animation_pause=to_number(animated[ch][3]),
-                                                hit_sound=load_sound(animated[ch][4]))
+                            block.AnimatedBlock(animated[ch]["animation"]["idle"], [row, col],
+                                                subfolder=animated[ch]["folder"],
+                                                animation_delay=to_number(animated[ch]["animation"]["speed"]),
+                                                animation_pause=to_number(animated[ch]["animation"]["delay"]),
+                                                hit_sound=load_sound(animated[ch]["sounds"]["over"]))
                         self.treasures_count += (ch in CC.TREASURE_BLOCKS)
 
                     if ch in CC.BEAST_BLOCKS:
                         monster = CC.BEAST_UNITS[ch]
-                        self.beasts.append(character.Beast(monster, self, [row, col], subfolder=monster["folder"],
-                                                           sounds=(None, None, load_sound(monster["dieSound"])),
+                        self.beasts.append(character.Beast(monster["animation"], self, [row, col],
+                                                           subfolder=monster["folder"],
+                                                           sounds=(None, None, load_sound(monster["sounds"]["death"])),
                                                            idle_delay=monster["idle_delay"],
                                                            fall_delay=monster["fall_delay"],
                                                            step=CC.BEAST_STEP,
