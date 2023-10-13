@@ -104,10 +104,11 @@ class Character(block.Block):
                                                               animation_delay=6)
 
             if attack_list[0] not in self.images:
-                self.images[attack_list[0]] = block.TemporaryBlock((None, None), animation_delay=6)
+                self.images[attack_list[0]] = None #block.TemporaryBlock((None, None), animation_delay=6)
 
             if attack_list[1] not in self.images:
-                self.images[attack_list[1]] = self.images[attack_list[0]].copy(xflip=True)
+                self.images[attack_list[1]] = self.images[attack_list[0]].copy(xflip=True) \
+                    if self.images[attack_list[0]] is not None else None
 
     def __clone_animation__(self, state1, state2, flip=False, reverse=False):
         f, z = state1, state2

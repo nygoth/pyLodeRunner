@@ -42,9 +42,10 @@ class Block(pygame.sprite.Sprite):
     # TODO Реализовать масштабирование
     def copy(self, xflip=False, yflip=False, scale=1):
         """Копирование текущего экземпляра в новый объект с возможностью отобразить зеркально."""
-        copied = Block(None)
+        copied = Block(None, subfolder=path.basename(self.base_images_folder))
 
         copied.image = (self.image.copy(), pygame.transform.flip(self.image, xflip, yflip))[xflip or yflip]
+        copied.origin = self.origin
 
         return copied
 
@@ -83,12 +84,13 @@ class Button(Block):
             self.rect = self.image.get_rect(topleft=pos)
 
     def copy(self, xflip=False, yflip=False, scale=1):
-        copied = Button((None, None))
+        copied = Button((None, None), subfolder=path.basename(self.base_images_folder))
 
         copied.images = [pygame.transform.flip(self.images[0], xflip, yflip),
                          pygame.transform.flip(self.images[1], xflip, yflip)] if xflip or yflip else self.images.copy()
 
         copied.pressed_state = self.pressed_state
+        copied.origin = self.origin
 
         return copied
 
@@ -145,7 +147,8 @@ class AnimatedBlock(Block):
         canvas.blit(self.get_image(tick), self.get_screen_pos(tick=tick))
 
     def copy(self, xflip=False, yflip=False, scale=1):
-        copied = AnimatedBlock(None, self.pos, animation_delay=self.delay, animation_pause=self.pause)
+        copied = AnimatedBlock(None, self.pos, path.basename(self.base_images_folder),
+                               animation_delay=self.delay, animation_pause=self.pause)
         return self.__copy_body__(copied, xflip, yflip, scale)
 
     def __copy_body__(self, dst, xflip=False, yflip=False, scale=1):
@@ -154,6 +157,7 @@ class AnimatedBlock(Block):
         dst.ticks = self.ticks
         dst.current_frame = self.current_frame
         dst.in_action = self.in_action
+        dst.origin = self.origin
 
         if self.single:
             dst.image = (self.image.copy(), pygame.transform.flip(self.image, xflip, yflip))[xflip or yflip]
@@ -188,10 +192,10 @@ class TemporaryBlock(AnimatedBlock):
         img_start, img_end, *rest = img
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
-        self.origin = ', '.join(img_start) if img_start is not None else "EMPTY"
+        self.origin = 'Animated: '.img_start[0] if img_start is not None else "EMPTY"
         if isinstance(img_end, (tuple, list)):
             self.images_end = [Block(file, position, subfolder) for file in img_end]
-            self.origin += ', '.join(img_end)
+            self.origin += ' | ' + img_end[0]
 
     def get_image(self, tick):
         if self.single:
@@ -205,6 +209,12 @@ class TemporaryBlock(AnimatedBlock):
         if not self.died:
             action = self.in_action
             super().get_image(tick)
+
+            # Это условия начала воспроизведения новой анимации после паузы. Так они выполняются после
+            # отработки get_image родителя
+            if all((not self.on_start, self.in_action, not self.current_frame, not self.ticks, not self.died)):
+                # Чтобы работал старый код, просто подставим анимацию финала вместо стартовой
+                self.images, self.images_end = self.images_end, self.images
 
             # Поведение по завершению анимации отличается.
             # Как только заканчивается стартовая анимация, мы показываем ПОСЛЕДНИЙ её кадр, а не первый.
@@ -221,16 +231,11 @@ class TemporaryBlock(AnimatedBlock):
                         self.died = True
                         return self.images_end[-1].image
 
-            # Это условия начала воспроизведения новой анимации после паузы. Так они выполняются после
-            # отработки get_image родителя
-            if all((self.on_start, self.in_action, not self.current_frame, not self.ticks, not self.died)):
-                # Чтобы работал старый код, просто подставим анимацию финала вместо стартовой
-                self.images, self.images_end = self.images_end, self.images
-
         return self.images[self.current_frame].image
 
     def copy(self, xflip=False, yflip=False, scale=1):
-        copied = TemporaryBlock((None, None), self.pos, animation_delay=self.delay, animation_pause=self.pause)
+        copied = TemporaryBlock((None, None), self.pos, path.basename(self.base_images_folder),
+                                animation_delay=self.delay, animation_pause=self.pause)
         self.__copy_body__(copied, xflip, yflip, scale)
         if self.images_end is not None:
             copied.images_end = [pict.copy(xflip, yflip, scale) for pict in self.images_end]

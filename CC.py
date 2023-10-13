@@ -264,7 +264,7 @@ BLOCKS = {"static": {'Z': {"type": ("solid", "support", "destructable", "mapped"
           # [animation][disappear] Анимация исчезания
           # [lifetime] Время жизни
           "temporary": {"cracked": {"type": ("deadly", ),
-                                    "folder": "Animation",
+                                    "folder": "Temporary",
                                     "lifetime": 400,
                                     "animation": {"appear": ("cracked_block0.png",
                                                              "cracked_block1.png",
