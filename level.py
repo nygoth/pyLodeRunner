@@ -104,7 +104,8 @@ class Level:
                                                 subfolder=animated[ch]["folder"],
                                                 animation_delay=to_number(animated[ch]["animation"]["speed"]),
                                                 animation_pause=to_number(animated[ch]["animation"]["delay"]),
-                                                hit_sound=load_sound(animated[ch]["sounds"]["over"]))
+                                                hit_sound=load_sound(animated[ch]["sounds"]["over"])
+                                                                if animated[ch]["sounds"] is not None else None)
                         self.treasures_count += (ch in CC.TREASURE_BLOCKS)
 
                     if ch in CC.BEAST_BLOCKS:
