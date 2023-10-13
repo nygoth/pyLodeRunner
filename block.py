@@ -27,11 +27,14 @@ class Block(pygame.sprite.Sprite):
         if img is not None:
             if isinstance(img, str):
                 self.image = pygame.image.load(path.join(self.base_images_folder, img)).convert_alpha()
+                self.origin = img
             elif isinstance(img, Block):
                 self.image = img.image
+                self.origin = img.origin
         else:
             self.image = pygame.Surface((CC.BLOCK_WIDTH, CC.BLOCK_WIDTH))
             self.image.fill((255, 255, 0))
+            self.origin = "FAILSAFE"
 
         self.size = self.image.get_size()
         self.rect = self.image.get_rect(center=(self.size[0] / 2, self.size[1] / 2))
@@ -173,15 +176,22 @@ class TemporaryBlock(AnimatedBlock):
     def __init__(self, img: tuple, position=None, subfolder="", animation_delay=0, animation_pause=0,
                  sound=None):
         self.on_start = True
+        """Флаг, показывающий, что показывается анимация появления временного блока (истина).
+            Иначе показывается анимация исчезновения, если есть."""
         self.died = False
         self.underlay = None
+        """Статический элемент уровня, который перекрыт этим временным блоком.
+            Дело в том, что иногда для корректной работы логики, из уровня удаляется
+            тот блок, который перекрыт временным, а по смерти временного блока возвращается назад."""
         self.sound = sound
         self.images_end = None
         img_start, img_end, *rest = img
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
+        self.origin = ', '.join(img_start) if img_start is not None else "EMPTY"
         if isinstance(img_end, (tuple, list)):
             self.images_end = [Block(file, position, subfolder) for file in img_end]
+            self.origin += ', '.join(img_end)
 
     def get_image(self, tick):
         if self.single:

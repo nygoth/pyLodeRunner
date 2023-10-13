@@ -222,6 +222,11 @@ class Level:
                     if not tempBlock.is_killing(self.player.pos, self.beasts):
                         live_result = CC.GAME_OVER_STUCK
                     self[tempBlock.pos] = tempBlock.underlay
+
+        # Отдельный цикл удаления умерших временных блоков. Вынесен потому, что иначе цикл отрисовки (выше)
+        # пропускает элементы, так как удалять приходится из перебираемого массива.
+        for tempBlock in self.temporary_items:
+            if tempBlock.died:
                 del self.temporary_items[self.temporary_items.index(tempBlock)]
 
         # ===========================
