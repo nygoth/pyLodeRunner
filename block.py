@@ -192,7 +192,7 @@ class TemporaryBlock(AnimatedBlock):
         img_start, img_end, *rest = img
 
         super().__init__(img_start, position, subfolder, animation_delay, animation_pause)
-        self.origin = 'Animated: '.img_start[0] if img_start is not None else "EMPTY"
+        self.origin = 'Animated: '+img_start[0] if img_start is not None else "EMPTY"
         if isinstance(img_end, (tuple, list)):
             self.images_end = [Block(file, position, subfolder) for file in img_end]
             self.origin += ' | ' + img_end[0]
